@@ -218,4 +218,15 @@ defaultproperties
     CollisionHeight=42.000000
     Role=ROLE_Authority
     RemoteRole=ROLE_None
+
+    // ARREGLO BUG 4 - esto faltaba en la reconstruccion y costo caro.
+    // Sin Health el muneco nace con 0, o sea que para el motor es un cadaver:
+    // la limpieza de pawns del juego se lo llevaba cuando alguien moria y el
+    // companero se volvia invisible para siempre. Ver CoopManager.UpdatePuppet.
+    Health=1000
+    bCanTeleport=False
+    bIsPlayer=False
+    bCollideWorld=False
+    Physics=PHYS_None
+    AnimRate=1.000000
 }

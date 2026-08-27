@@ -496,7 +496,20 @@ function UpdatePuppet()
     if (Player == None)
         return;
 
-    if (Puppet == None)
+    // ARREGLO BUG 4 (2026-08-27) - el companero desaparecia para siempre cuando
+    // alguien moria, aunque la sesion siguiera viva y los hechizos siguieran
+    // llegando (los hechizos no pasan por aqui).
+    //
+    // La condicion era  Puppet == None.  Si algo destruye el muneco - y la
+    // secuencia de muerte de HP1 lo hacia - la referencia NO se queda a None:
+    // se queda apuntando a un actor muerto con bDeleteMe. La condicion no se
+    // cumplia nunca mas y el muneco no se volvia a crear.
+    //
+    // Es el mismo patron del bug "zombi" que ya estaba documentado para el
+    // manager en la cabecera de esta clase, solo que aqui no se habia aplicado.
+    // Comprobar bDeleteMe ademas de None lo resuelve, y de paso se recupera
+    // solo de cualquier otra cosa que mate al muneco.
+    if (Puppet == None || Puppet.bDeleteMe)
     {
         Puppet = Spawn(class'CoopPuppet');
         if (Puppet == None)
@@ -504,6 +517,8 @@ function UpdatePuppet()
             log("[HP1Coop] failed to spawn puppet");
             return;
         }
+        if (bShowDebug)
+            LogMsg("muneco (re)creado");
     }
 
     // Must be set before the first placement, which traces to the floor.

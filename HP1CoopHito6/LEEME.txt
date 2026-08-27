@@ -1,0 +1,30 @@
+HP1 CO-OP - Hito 6
+HP1Coop.u = 59874 bytes.  LOS DOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+QUE CAMBIA RESPECTO AL HITO 5
+-----------------------------
+YA NO OS PERDEIS DE VISTA AL MORIR.
+
+  Sintoma: cuando alguien moria, el companero desaparecia para siempre. La
+  sesion seguia viva - se seguian oyendo los hechizos del otro - pero no se
+  le veia. Y solo se recuperaba si moriais LOS DOS.
+
+  Causa: dos cosas encadenadas.
+    1. Al muneco le faltaba Health en sus propiedades, asi que nacia con 0.
+       Para el motor eso es un cadaver, y la limpieza de pawns del juego se
+       lo llevaba.
+    2. Cuando el muneco moria, la referencia no quedaba vacia: quedaba
+       apuntando a un actor muerto. La comprobacion "si no hay muneco, crear
+       uno" no se cumplia nunca mas, asi que no se volvia a crear jamas.
+       Morir era lo unico que lo arreglaba, porque al recargar la partida se
+       creaba todo de cero. De ahi lo de tener que morir los dos.
+
+  Ahora el muneco se regenera solo en cuanto detecta que fue destruido.
+
+VIENE DEL HITO 5 (ya verificado en partida)
+  - el companero anima al saltar y escalar
+  - CoopHost funciona despues de CoopDisconnect
+  - no os perdeis al cambiar de nivel
+
+LA PRIMERA VEZ, EN LA CONSOLA (TAB):   CoopZ 0
+Y si quereis que el log sirva para diagnosticar:   CoopDebug
