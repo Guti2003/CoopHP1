@@ -36,6 +36,7 @@ var float TargetAnimRate;
 var string PlayerName;
 var float LastPacketAge;
 var bool bDidFirstPlace;
+var name TriedAnim;          // ultima animacion que se intento reproducir
 
 event PostBeginPlay()
 {
@@ -170,10 +171,21 @@ simulated event Tick(float dt)
     newRot.Roll = 0;
     SetRotation(newRot);
 
-    if (TargetAnim != '' && AnimSequence != TargetAnim)
+    // La condicion era  AnimSequence != TargetAnim.  Si PlayAnim fallaba (la
+    // secuencia no existe en la malla), AnimSequence nunca llegaba a igualar a
+    // TargetAnim y esto se reintentaba en CADA tick: la animacion se reiniciaba
+    // 60 veces por segundo, o sea que el muneco se veia congelado, y el log se
+    // llenaba - 21.352 lineas en una sola partida. Recordar lo que ya se
+    // intento corta las dos cosas de raiz.
+    if (TargetAnim != '' && TargetAnim != TriedAnim)
+    {
+        TriedAnim = TargetAnim;
         PlayAnim(TargetAnim, TargetAnimRate, 0.15);
+    }
     else if (bAnimFinished && TargetAnim != '' && TargetAnimRate > 0)
+    {
         PlayAnim(TargetAnim, TargetAnimRate, 0.0);
+    }
 }
 
 // ---------------------------------------------------------------------------

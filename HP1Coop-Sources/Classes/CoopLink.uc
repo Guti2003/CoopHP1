@@ -15,6 +15,7 @@ class CoopLink extends UdpLink;
 var CoopManager mgr;
 var IpAddr RemoteAddr;
 var bool bRemoteKnown;
+var int  BoundPort;      // puerto realmente bindeado; 0 = sin socket
 
 function Init(CoopManager m)
 {
@@ -34,6 +35,7 @@ function bool StartHost(int port)
         mgr.LogMsg("failed to bind UDP port "$port);
         return false;
     }
+    BoundPort = bound;
     mgr.LogMsg("hosting on UDP port "$bound$", waiting for a player...");
     return true;
 }
@@ -56,6 +58,7 @@ function bool StartClient(string ip, int port)
         mgr.LogMsg("failed to bind a local UDP port");
         return false;
     }
+    BoundPort = bound;
     mgr.LogMsg("connecting to "$ip$":"$port$" (local port "$bound$")...");
     return true;
 }
@@ -84,8 +87,16 @@ event ReceivedText(IpAddr Addr, string Text)
     mgr.OnPacket(Text);
 }
 
+// Olvida al peer pero conserva el socket abierto. Ver ARREGLO BUG 2 en
+// CoopManager.Host().
+function Reset()
+{
+    bRemoteKnown = false;
+}
+
 event Destroyed()
 {
+    BoundPort = 0;
     mgr = None;
     Super.Destroyed();
 }

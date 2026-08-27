@@ -158,10 +158,36 @@ static function int StrSplit(coerce string Text, string delim, out string parts[
 // Session control
 // ---------------------------------------------------------------------------
 
+// ARREGLO BUG 2 (2026-08-27) - re-hospedar fallaba con "failed to bind UDP
+// port 7777".
+//
+// Antes esto hacia DisconnectLink() (que destruia el socket) y acto seguido
+// pedia el MISMO puerto. En UE1 Destroy() solo marca el actor: el socket nativo
+// no se cierra hasta la recogida de basura, que dentro de una partida puede
+// tardar muchisimo. Y como StartHost pide el puerto exacto (BindPort con
+// bUseNextAvailable=False), no se recuperaba solo nunca.
+//
+// La solucion es no destruir el socket: si ya tenemos uno bindeado al puerto
+// que nos piden, se reutiliza y solo se limpia el estado de sesion.
 function Host(optional int port)
 {
     if (port == 0)
         port = 7777;
+
+    if (Link != None && !Link.bDeleteMe && Link.BoundPort == port)
+    {
+        // Ya estamos escuchando en ese puerto: reciclar en vez de re-bindear.
+        ResetSession();
+        Link.Reset();
+        bIsHost = true;
+        bAutoHost = true;
+        bAutoConnect = false;
+        LastPort = port;
+        SaveConfig();
+        LogMsg("hosting on UDP port " $ port $ ", waiting for a player...");
+        return;
+    }
+
     DisconnectLink();
 
     Link = Spawn(class'CoopLink');
@@ -216,17 +242,37 @@ function ConnectTo(string ip, optional int port)
     }
 }
 
+// Parte del ARREGLO BUG 2: al desconectar se conserva el socket. Antes se
+// destruia, y como UE1 no lo cierra hasta la recogida de basura, el siguiente
+// CoopHost no podia volver a coger el puerto. Conservarlo es ademas mas barato:
+// re-hospedar pasa a ser instantaneo.
 function DisconnectNow()
 {
     if (Link != None)
+    {
         Link.SendTo(PROTO $ "|BYE");
-    DisconnectLink();
+        Link.Reset();
+    }
+    ResetSession();
     bAutoHost = false;
     bAutoConnect = false;
     SaveConfig();
     LogMsg("disconnected");
 }
 
+// Limpia el estado de la sesion sin tocar el socket.
+function ResetSession()
+{
+    bConnected = false;
+    RemoteName = "";
+    RemoteMap = "";
+    LastAnnouncedMap = "";
+    ResetStats();
+    HidePuppet();
+}
+
+// Cierre completo, socket incluido. Se usa al cambiar de puerto y al recoger
+// el nivel; para CoopDisconnect basta con ResetSession().
 function DisconnectLink()
 {
     if (Link != None)
@@ -486,9 +532,38 @@ function bool bIsMenuMap()
     return (m == "STARTUP" || m == "ENTRY");
 }
 
+// ARREGLO BUG 3 (2026-08-27) - la identidad del nivel.
+//
+// Level.Outer.Name NO sirve: en HP1 una partida guardada ES un mapa. Cargar
+// desde el menu ejecuta literalmente  open save0.usa  (FESlotPage.uc:252), asi
+// que el paquete del nivel pasa a llamarse "save0" y los dos jugadores dejan de
+// coincidir en cuanto uno cruza una transicion y el otro no. Observado en
+// partida: uno en "save0", el otro en "LEV_TUT1B", y el muneco desaparece.
+// Peor aun, la logica de seguimiento intentaba ClientTravel("save0").
+//
+// El juego si sabe donde esta: HPConsole.doLevelSave saca el nombre real de
+// Level.LevelEnterText, cortando en el primer punto (HPConsole.uc:252-256).
+// Esa propiedad vive en el LevelInfo, o sea que viaja dentro del savegame y
+// sigue siendo correcta despues de cargar. Y es un nombre al que ClientTravel
+// puede viajar de verdad, cosa que "save0" no era.
+//
+// Caps() porque se compara entre maquinas y no queremos que una diferencia de
+// mayusculas separe a dos jugadores que estan en el mismo sitio.
 function string MapName()
 {
-    return string(Level.Outer.Name);
+    local string s;
+    local int n;
+
+    s = Level.LevelEnterText;
+    n = InStr(s, ".");
+    if (n != -1)
+        s = Left(s, n);
+
+    if (s != "")
+        return Caps(s);
+
+    // Sin LevelEnterText no hay nada mejor que el nombre del paquete.
+    return Caps(string(Level.Outer.Name));
 }
 
 // ---------------------------------------------------------------------------
