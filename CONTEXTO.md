@@ -343,3 +343,23 @@ están bloqueados por esto: hace falta el toolkit de modding de HP1
 
 **Decisión tomada por Miguel:** para el BUG 1, adelante con la malla de Harry.
 Ver dos Harrys es aceptable. Es el arreglo de una línea.
+
+---
+
+# Hito 5 verificado en partida (2026-08-27)
+
+Miguel confirma que los tres bugs quedaron solucionados jugando:
+
+- **BUG 1** — el compañero anima al saltar y escalar. La malla de Harry era la
+  correcta; los dos Harrys son aceptables.
+- **BUG 2** — `CoopHost` tras `CoopDisconnect` ya no falla. Conservar el socket
+  en vez de destruirlo era la solución.
+- **BUG 3** — los jugadores ya no se pierden al cruzar una transición de nivel.
+  `Level.LevelEnterText` es la fuente correcta de identidad del nivel, y
+  sobrevive a la carga de partida.
+
+Con esto la **presencia** está terminada: dos personas recorren Hogwarts juntas,
+se ven moverse y animarse, cambian de nivel sin perderse y se lanzan hechizos que
+existen de verdad en las dos partidas.
+
+Lo que queda es **compartir el mundo**, que es otro problema. Ver la hoja de ruta.
