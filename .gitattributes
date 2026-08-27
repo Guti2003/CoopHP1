@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# El paquete compilado es binario: nunca tocarlo.
+*.u  binary
+*.rar binary
