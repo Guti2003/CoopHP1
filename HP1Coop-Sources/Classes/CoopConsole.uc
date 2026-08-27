@@ -1,3 +1,35 @@
+//================================================================================
+// CoopConsole - entry point and console command surface for the co-op mod.
+//
+// WHY THE CONSOLE AND NOT ServerActors
+// ------------------------------------
+// The first design spawned CoopManager from
+//     [Engine.GameEngine] ServerActors=HP1Coop.CoopManager
+// That was verified to work under "UCC server" but NOT in the normal game:
+// UE1 only instantiates ServerActors when the engine comes up as a server, and
+// single-player HP1 runs NM_Standalone. Confirmed against HP.log - the actor
+// never spawned, while "CoopConsole Transient.CoopConsole0" did.
+//
+// The console, by contrast, is instantiated on every level in every net mode,
+// and Default.ini already redirects it:
+//     [Engine.Engine] Console=HPMenu.HPConsole   ->   HP1Coop.CoopConsole
+// So the console owns the mod lifecycle. HPConsole extends baseConsole extends
+// UWindow.WindowConsole extends Engine.Console; cross-package subclassing was
+// verified by the compiler.
+//
+// Commands:
+//   CoopHost [port]            start hosting, default 7777
+//   CoopConnect <ip> [port]    join a host by numeric IP
+//   CoopDisconnect
+//   CoopStatus
+//   CoopDebug
+//   CoopZ <n>                  tune the remote puppet's height, live
+//
+// The console opens with TAB by default (see DesiredConsoleKey below).
+// It only reaches the co-op commands during actual gameplay - in the front-end
+// menu there is no PlayerPawn, so Ready() reports "not ready yet".
+//================================================================================
+
 class CoopConsole extends HPConsole;
 
 var CoopManager Coop;

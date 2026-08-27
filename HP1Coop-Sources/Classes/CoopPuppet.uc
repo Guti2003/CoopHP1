@@ -1,3 +1,26 @@
+//================================================================================
+// CoopPuppet - ghost of the remote player.
+//
+// 2026-08-27: se dibujaba como Ron y por eso NO animaba. skronMesh no tiene el
+// set de animaciones de Harry, y el emisor manda nombres de Harry. Ahora usa la
+// malla de Harry. Ver ARREGLOS.md (BUG 1).
+//
+// Differences from the HP2 original:
+//  - Mesh lives in the HarryPotter package on HP1, not HPModels.
+//    HP1: SkeletalMesh'HarryPotter.skronMesh'   (verified in RON.uc)
+//    HP2: SkeletalMesh'HPModels.skharryMesh'
+//  - Height handling is NOT the HP2 formula. HP2 subtracted the full 42 because
+//    its bare-Pawn puppet drew the mesh from the actor Location upward. On HP1
+//    that sinks Ron to the waist (reported from play). HP1's Harry has
+//    CollisionHeight=42 and Ron has CollisionHeight=30, so the peer's Location
+//    (Harry's cylinder centre = feet + 42) has to be re-based to Ron's centre
+//    (feet + 30) - a 12 unit drop, not 42. ZOffset defaults to that and is
+//    tunable live with the CoopZ console command, since the exact value depends
+//    on mesh origins baked into HarryPotter.u that cannot be read from source.
+//  - Collision is forced off so the puppet never fires level triggers twice.
+//    This is the single most important invariant of the whole mod.
+//================================================================================
+
 class CoopPuppet extends Pawn;
 
 const SIDE_OFFSET = 80.0;

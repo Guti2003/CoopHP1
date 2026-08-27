@@ -1,0 +1,11 @@
+HP1Coop.u compilado el 2026-08-27 desde fuentes recuperadas.  54.338 bytes.
+
+CAMBIO RESPECTO A HITO 3:
+  El companero se dibuja con la malla de HARRY, no la de Ron. La de Ron no
+  tiene el set de animaciones de Harry, asi que saltar y escalar se veian
+  congelados. Ahora se ven dos Harrys y las animaciones funcionan.
+  PuppetZOffset pasa de 12 a 0: ya no hay que re-basar altura.
+  Si tu config guardada trae 12, corrigelo en partida con:  CoopZ 0
+
+SIN PROBAR EN PARTIDA. Los bugs 2 (re-hospedar) y 3 (nombre del mapa) siguen
+sin arreglar. Ver ../HP1Coop-Sources/ARREGLOS.md

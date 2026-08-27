@@ -1,3 +1,35 @@
+//================================================================================
+// CoopManager - heart of the HP1 co-op mod. Milestone 1: pose sync only.
+//
+// KEY ARCHITECTURAL DIFFERENCE FROM HP2COOP
+// -----------------------------------------
+// HP2Coop hooks the game by recompiling the player class with
+// "class CoopHarry injects harry", a non-standard keyword provided by the M212
+// toolchain. HP1 does not need that. This actor is created and kept alive by
+// CoopConsole, which the stock ini key
+//     [Engine.Engine] Console=HP1Coop.CoopConsole
+// already redirects. Nothing in HarryPotter.u or HPBase.u is modified, so none
+// of the embedded meshes/textures in those 14 MB packages are at risk.
+//
+// An earlier revision spawned this actor from
+//     [Engine.GameEngine] ServerActors=HP1Coop.CoopManager
+// That was tested and does NOT work: UE1 only instantiates ServerActors when
+// the engine comes up as a server, and single-player HP1 is NM_Standalone. It
+// did work under "UCC server", which is what made the failure confusing.
+//
+// Text protocol over UDP ("|" delimited) - identical to HP2Coop v1 so the two
+// codebases stay diffable:
+//   HPCOOP|1|HELLO|name
+//   HPCOOP|1|HELLOACK|name
+//   HPCOOP|1|PING|seq
+//   HPCOOP|1|PONG|seq
+//   HPCOOP|1|S|map|x|y|z|yaw|pitch|vx|vy|vz|anim|rate|hp
+//   HPCOOP|1|MAP|mapfile.unr
+//   HPCOOP|1|SP|seq|class|x|y|z|pitch|yaw   (sent 3x, deduped by seq)
+//   HPCOOP|1|BYE
+// Milestone 2+ will add SP (spells), PICK (props), LTRIG (lumos secrets).
+//================================================================================
+
 class CoopManager extends Actor
   config;
 

@@ -1,3 +1,15 @@
+//================================================================================
+// CoopLink - UDP socket wrapper for the HP1 co-op mod.
+//
+// P2P model: the host binds a fixed port and learns the peer address from the
+// first incoming packet; the client binds an ephemeral port and sends to the
+// configured host address. Text protocol (see CoopManager).
+//
+// Ported from HP2Coop (MIT, jenyaalexanov). Unchanged apart from the class
+// header: HP1's IpDrv exposes the same UdpLink API, verified against
+// IpDrv/Classes/UdpLink.uc in Han's HP1 script source export.
+//================================================================================
+
 class CoopLink extends UdpLink;
 
 var CoopManager mgr;
