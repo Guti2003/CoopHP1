@@ -1,0 +1,5 @@
+# Nada del juego original entra aqui: es material con copyright y no es nuestro.
+# Este repositorio solo contiene el mod.
+*.log
+Thumbs.db
+desktop.ini

@@ -1,0 +1,164 @@
+===============================================================================
+  HP1 CO-OP  -  cooperativo para Harry Potter y la Piedra Filosofal (PC, 2001)
+  Version de pruebas - Hito 1
+===============================================================================
+
+QUE ES
+------
+Un mod que permite que dos personas jueguen a la vez. Cada uno corre su propia
+partida y se ve al otro moverse por el mapa, representado por Ron.
+
+IMPORTANTE: esto NO incluye el juego. Necesitas tu propia copia instalada.
+
+
+QUE HACE FALTA
+--------------
+1. El juego instalado (edicion PC de 2001).
+2. Haber abierto el juego al menos UNA VEZ antes de instalar el mod
+   (el juego crea su configuracion en "Documentos\Harry Potter" al arrancar,
+   y el instalador necesita ese archivo).
+3. Windows con PowerShell (viene de serie).
+
+
+COMO INSTALAR
+-------------
+1. Descomprime esta carpeta donde quieras.
+2. Doble clic en  Instalar.bat
+3. Si no encuentra el juego solo, te pedira la carpeta. Es la que contiene
+   las subcarpetas System\ y Maps\.
+
+El instalador:
+  - copia HP1Coop.u a la carpeta System\ del juego
+  - cambia UNA linea de configuracion (Console=)
+  - hace copia de seguridad de todo lo que toca
+
+No modifica ningun archivo original del juego. Para deshacerlo: Desinstalar.bat
+
+
+COMO JUGAR
+----------
+1. Los dos abris el juego y cargais partida EN EL MISMO NIVEL.
+   Si no estais en el mismo mapa no os vereis (es lo esperado).
+
+2. Abrid la consola con TAB.
+
+   Tiene que ser DENTRO DEL JUEGO, con la partida cargada y jugando.
+   En el menu principal no funciona: los comandos necesitan a Harry en el
+   mapa, y en el menu todavia no existe.
+
+   La consola se despliega desde arriba. Se cierra con TAB otra vez.
+
+   NOTA: el juego original trae la consola DESACTIVADA de fabrica y
+   asignada a otra tecla. El mod lo arregla solo. Si quieres otra tecla,
+   en Documentos\Harry Potter\HP.ini pon  ConsoleKey=192  (la de la
+   izquierda del 1) o el codigo que prefieras.
+
+3. Uno hace de servidor y escribe:
+
+       CoopHost
+
+4. El otro escribe (con la IP del primero, numerica):
+
+       CoopConnect 192.168.1.50
+
+5. Si funciona, vereis un mensaje tipo "X joined the game" / "connected to the
+   host game of X", y el companero aparecera como Ron.
+
+
+OTROS COMANDOS
+--------------
+  CoopStatus        estado, ping, paquetes enviados y recibidos
+  CoopZ 12          ajusta la altura del companero.
+                    Si Ron se hunde en el suelo, baja el numero (CoopZ 0).
+                    Si flota, sube el numero (CoopZ 20, CoopZ 30...).
+                    Se guarda solo.
+  CoopDisconnect    cortar la sesion
+  CoopDebug         informacion extra
+
+
+RED
+---
+- En la misma casa / mismo router: usad la IP local (192.168.x.x). Directo.
+- Por internet: el que hace de CoopHost necesita abrir el puerto UDP 7777
+  en su router.
+- Alternativa mas comoda: instalad ZeroTier o Tailscale los dos. Os da una red
+  privada virtual y podeis usar la IP que os asigne, sin tocar el router.
+
+CoopConnect solo acepta IP numerica, no nombres de dominio.
+
+
+QUE FUNCIONA Y QUE NO
+---------------------
+Funciona:
+  - ver al otro jugador moverse, con su posicion, rotacion y animaciones
+  - sincronizacion a 20 veces por segundo
+  - seguir al companero cuando cambia de mapa
+  - HECHIZOS: cuando uno lanza un hechizo, el otro lo ve salir, volar,
+    chocar y explotar de verdad. No es un adorno visual: el hechizo existe
+    en las dos partidas y afecta al mundo en las dos.
+
+Todavia NO:
+  - objetos recogidos (grageas, cromos, ranas)
+  - enemigos
+  - puertas, mecanismos y cinematicas
+  - progreso de la partida
+
+O sea: cada uno juega su partida y os veis. Todavia no se comparte el mundo.
+Es una prueba de concepto, no el juego cooperativo terminado.
+
+
+EL JUEGO NO ARRANCA (aunque no hayas instalado el mod)
+------------------------------------------------------
+Si al abrir el juego sale un error nada mas empezar, NO es culpa del mod y NO
+hace falta reinstalar el juego. El juego de 2001 usa el renderizador por
+software a pantalla completa, y Windows 10/11 ya no lo permite.
+
+Arreglo: abre este archivo con el Bloc de notas
+
+    Documentos\Harry Potter\HP.ini
+
+busca las lineas que ponen
+
+    StartupFullscreen=True
+
+(hay dos) y cambialas por
+
+    StartupFullscreen=False
+
+Guarda y vuelve a abrir el juego. Arrancara en ventana.
+
+Ese archivo esta FUERA de la carpeta del juego, asi que reinstalar el juego no
+lo arregla: la configuracion se queda igual.
+
+
+IMPORTANTE - USAD LA MISMA VERSION LOS DOS
+------------------------------------------
+Si uno tiene una version del mod y el otro tiene otra, puede que os conecteis
+pero no os veais, o que no os conecteis en absoluto. Antes de probar,
+aseguraos de que los dos habeis instalado el MISMO archivo.
+
+Para comprobarlo: mirad el tamano de System\HP1Coop.u en los dos ordenadores.
+Tiene que ser exactamente el mismo numero de bytes.
+
+
+SI ALGO FALLA
+-------------
+- "No pasa nada al escribir CoopHost": el mod no cargo. Comprueba que existe
+  System\HP1Coop.u y que "Documentos\Harry Potter\HP.ini" tiene la linea
+  Console=HP1Coop.CoopConsole
+
+- "El juego no arranca despues de instalar": ejecuta Desinstalar.bat. Puede que
+  tu edicion del juego sea distinta a aquella contra la que se compilo el mod.
+
+- "Nos conectamos pero no nos vemos": comprobad que estais en el MISMO nivel.
+  Usad CoopStatus para ver si llegan paquetes.
+
+- El registro del juego esta en "Documentos\Harry Potter\HP.log" y ahi salen
+  todas las lineas que empiezan por [HP1Coop].
+
+
+CREDITOS
+--------
+Portado desde hp2-coop-multiplayer (jenyaalexanov, licencia MIT), que hace lo
+mismo para Harry Potter y la Camara Secreta.
+Recursos de modding de HP1: metallicafan212 y Han / OldUnreal.
