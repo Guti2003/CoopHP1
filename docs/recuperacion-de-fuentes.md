@@ -1,4 +1,4 @@
-# Fuentes de HP1Coop recuperadas del paquete compilado
+# Cómo se recuperaron las fuentes
 
 Extraídas el 2026-08-27 desde `System\HP1Coop.u` (52.760 bytes) de la instalación
 en `E:\Harry Potter y la Piedra Filosofal`.

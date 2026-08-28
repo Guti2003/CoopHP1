@@ -1,4 +1,7 @@
 //================================================================================
+// HP1 Co-op  -  modo cooperativo para Harry Potter y la Piedra Filosofal (2001)
+// Miguel Gutierrez (@Guti2003).  Licencia MIT - ver LICENSE.
+//================================================================================
 // CoopConsole - entry point and console command surface for the co-op mod.
 //
 // WHY THE CONSOLE AND NOT ServerActors

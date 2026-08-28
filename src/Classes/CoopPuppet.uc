@@ -1,4 +1,7 @@
 //================================================================================
+// HP1 Co-op  -  modo cooperativo para Harry Potter y la Piedra Filosofal (2001)
+// Miguel Gutierrez (@Guti2003).  Licencia MIT - ver LICENSE.
+//================================================================================
 // CoopPuppet - ghost of the remote player.
 //
 // 2026-08-27: se dibujaba como Ron y por eso NO animaba. skronMesh no tiene el

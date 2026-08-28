@@ -1,4 +1,7 @@
 //================================================================================
+// HP1 Co-op  -  modo cooperativo para Harry Potter y la Piedra Filosofal (2001)
+// Miguel Gutierrez (@Guti2003).  Licencia MIT - ver LICENSE.
+//================================================================================
 // CoopLink - UDP socket wrapper for the HP1 co-op mod.
 //
 // Topologia en ESTRELLA. Los clientes solo hablan con el host; el host reenvia
