@@ -1,34 +1,86 @@
-MIT License
+HP1 Co-op — Licencia de uso
+Copyright (c) 2026 Miguel Gutiérrez (@Guti2003). Todos los derechos reservados.
 
-Copyright (c) 2026 Miguel Gutierrez (@Guti2003)
+Esto NO es software de código abierto. Se publica para que la gente pueda
+jugarlo, no para que se redistribuya.
 
-HP1 Co-op is a port to "Harry Potter and the Philosopher's Stone" of
-hp2-coop-multiplayer. The original work is covered by the notice below, which
-its MIT license requires to be retained in derivative works:
+
+LO QUE SÍ PUEDES HACER
+----------------------
+
+1. Descargar el mod y usarlo, gratis, sin pedir permiso.
+2. Jugar con él con quien quieras.
+3. Leer el código, estudiarlo y aprender de él.
+4. Modificarlo para tu uso personal o el de tus amigos.
+5. Enlazar a este repositorio.
+
+
+LO QUE NO PUEDES HACER
+----------------------
+
+1. Publicar o distribuir copias, ni del mod ni del código, en ningún sitio.
+   Enlaza a este repositorio en vez de subir tu propia copia.
+2. Publicar versiones modificadas, derivadas o "forks" distribuidos.
+3. Venderlo, ni cobrarlo, ni incluirlo en nada que se cobre.
+4. Presentarlo como propio o quitar los avisos de autoría.
+
+Si quieres hacer algo de esta lista, pídelo. La respuesta puede ser que sí.
+
+
+PARTES HEREDADAS — IMPORTANTE
+-----------------------------
+
+Este mod es un port a "Harry Potter y la Piedra Filosofal" de
+hp2-coop-multiplayer, de jenyaalexanov, publicado bajo licencia MIT:
 
     Copyright (c) jenyaalexanov (hp2-coop-multiplayer)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+    Se concede permiso, libre de cargo, a cualquier persona que obtenga una
+    copia de este software y los archivos de documentación asociados, para
+    utilizarlo sin restricción, incluyendo sin limitación los derechos de uso,
+    copia, modificación, fusión, publicación, distribución, sublicencia y/o
+    venta de copias del software, y para permitir a las personas a las que se
+    les proporcione el software hacer lo mismo, con la condición de que el
+    aviso de copyright anterior y este aviso de permiso se incluyan en todas
+    las copias o partes sustanciales del software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Las restricciones de esta licencia se aplican al trabajo de Miguel Gutiérrez.
+NO se aplican, ni pueden aplicarse, a las partes que provienen del proyecto
+original: quien las obtenga de su fuente original las tiene bajo licencia MIT,
+y eso no se puede revocar.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
---------------------------------------------------------------------------------
-NOT COVERED BY THIS LICENSE
+SIN GARANTÍA
+------------
 
-This repository does not include, and does not grant any rights over, "Harry
-Potter and the Philosopher's Stone" or any of its assets. The game is required
-separately and remains the property of its rights holders.
+El software se proporciona "tal cual", sin garantía de ningún tipo. El autor no
+se hace responsable de ningún daño derivado de su uso.
+
+
+EL JUEGO NO ESTÁ INCLUIDO
+-------------------------
+
+Este repositorio no incluye "Harry Potter y la Piedra Filosofal" ni ninguno de
+sus recursos, ni concede ningún derecho sobre ellos. El juego hay que tenerlo
+aparte y sigue perteneciendo a sus titulares.
+
+
+================================================================================
+ENGLISH SUMMARY
+
+HP1 Co-op — Copyright (c) 2026 Miguel Gutiérrez (@Guti2003).
+All rights reserved. This is NOT open source.
+
+You may: download, use and play it for free; read and study the code; modify it
+for personal use; link to this repository.
+
+You may not: redistribute it, publish modified versions or distributed forks,
+sell it, or remove the authorship notices. Ask if you want to — the answer may
+well be yes.
+
+Portions derive from hp2-coop-multiplayer by jenyaalexanov, licensed MIT (notice
+above). These restrictions apply to Miguel Gutiérrez's work only; the inherited
+portions remain under MIT for anyone obtaining them from the original source.
+
+Provided "as is", without warranty of any kind. The game itself is not included
+and no rights over it are granted.

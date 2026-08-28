@@ -134,16 +134,31 @@ bugs que aparecieron jugando —con su causa y su arreglo— en
 
 ---
 
-## Licencia y origen
+## Licencia
 
-Publicado bajo licencia MIT. Ver [LICENSE](LICENSE).
+**Descárgalo y juega libremente. No lo redistribuyas.**
+
+| | |
+|---|---|
+| Descargar, usar y jugar gratis | ✅ |
+| Leer el código y aprender de él | ✅ |
+| Modificarlo para ti o tus amigos | ✅ |
+| Publicar copias o versiones modificadas | ❌ enlaza aquí en vez de subir la tuya |
+| Venderlo o incluirlo en algo de pago | ❌ |
+
+Si quieres hacer algo de lo prohibido, **pídelo**: la respuesta puede ser que sí.
+Los términos completos están en [LICENSE](LICENSE).
+
+### Origen
 
 Este mod es un port a *La Piedra Filosofal* de
 [hp2-coop-multiplayer](https://github.com/jenyaalexanov/hp2-coop-multiplayer),
-de jenyaalexanov, que hace lo mismo para *La Cámara Secreta*, y que se publicó
-bajo licencia MIT. El aviso de autoría original se mantiene en `LICENSE` porque
-esa licencia así lo exige.
+de jenyaalexanov, que hace lo mismo para *La Cámara Secreta* y se publicó bajo
+licencia MIT. Las restricciones de arriba cubren el trabajo propio; las partes
+heredadas siguen siendo MIT para quien las obtenga del proyecto original.
 
 El compilador y las fuentes de UnrealScript de HP1 provienen del archivo de
 preservación de [OldUnreal](https://www.oldunreal.com/) y del trabajo de
 recopilación de metallicafan212 y Han.
+
+El juego no está incluido y este repositorio no concede ningún derecho sobre él.
