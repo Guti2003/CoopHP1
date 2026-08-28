@@ -1,0 +1,41 @@
+HP1 CO-OP - Hito 7
+HP1Coop.u = 65121 bytes.  LOS DOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+NOVEDADES
+---------
+PONEOS NOMBRE
+  Los dos os llamabais "Harry", asi que el HUD y el log no distinguian quien
+  era quien. En la consola (TAB):
+
+      CoopName Migue
+
+  Se guarda solo. Maximo 16 letras, sin barras verticales.
+
+AVISO SI NO TENEIS LA MISMA VERSION
+  Antes, si cada uno tenia un HP1Coop.u distinto, os conectabais igual y
+  luego pasaban cosas raras sin ningun mensaje. Ahora sale un aviso claro
+  nada mas saludaros. No corta la conexion: solo os avisa.
+
+RECONEXION AUTOMATICA
+  Si se cae la conexion, el cliente vuelve a llamar inmediatamente en vez de
+  esperar, y se limpia el estado viejo para que el saludo sea completo.
+  El que hizo CoopHost solo tiene que esperar; no hay que teclear nada.
+
+VIENE DE ANTES
+  - el companero anima al saltar y escalar
+  - CoopHost funciona despues de CoopDisconnect
+  - no os perdeis al cambiar de nivel
+  - no os perdeis de vista al morir
+
+LOS SECRETOS DE LUMOS YA FUNCIONABAN
+  No hizo falta programarlos. Los activa un spellTrigger, que solo reacciona
+  a proyectiles de hechizo - y los hechizos ya existen de verdad en las dos
+  partidas. Lo mismo que los calderos y las placas que empujais.
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]        CoopConnect <ip> [puerto]
+  CoopName <nombre>        CoopStatus
+  CoopZ <n>                CoopDebug
+  CoopDisconnect
+
+LA PRIMERA VEZ:   CoopZ 0

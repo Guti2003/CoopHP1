@@ -192,6 +192,15 @@ exec function CoopZ(float z)
         Coop.SetZOffset(z);
 }
 
+// Los dos jugadores se llamaban "Harry" por defecto, asi que el HUD y el log
+// eran ambiguos: "Harry se ha unido a la partida" no decia nada. Se guarda en
+// la configuracion, o sea que se pone una vez y ya.
+exec function CoopName(string nombre)
+{
+    if (Ready())
+        Coop.SetPlayerName(nombre);
+}
+
 exec function CoopDebug()
 {
     if (Ready())

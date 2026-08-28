@@ -19,21 +19,30 @@
 //
 // Text protocol over UDP ("|" delimited) - identical to HP2Coop v1 so the two
 // codebases stay diffable:
-//   HPCOOP|1|HELLO|name
-//   HPCOOP|1|HELLOACK|name
+//   HPCOOP|1|HELLO|name|build
+//   HPCOOP|1|HELLOACK|name|build
 //   HPCOOP|1|PING|seq
 //   HPCOOP|1|PONG|seq
 //   HPCOOP|1|S|map|x|y|z|yaw|pitch|vx|vy|vz|anim|rate|hp
 //   HPCOOP|1|MAP|mapfile.unr
 //   HPCOOP|1|SP|seq|class|x|y|z|pitch|yaw   (sent 3x, deduped by seq)
 //   HPCOOP|1|BYE
-// Milestone 2+ will add SP (spells), PICK (props), LTRIG (lumos secrets).
+// Los hechizos (SP) ya estan. PICK (objetos) se descarto a proposito: a los
+// jugadores les gusta que cada uno tenga sus grageas y cromos. LTRIG resulto
+// innecesario - los secretos de Lumos se activan con un spellTrigger, que solo
+// reacciona a proyectiles baseSpell, y esos ya se replican.
 //================================================================================
 
 class CoopManager extends Actor
   config;
 
 const PROTO = "HPCOOP|1";
+
+// Etiqueta de build. Viaja en HELLO/HELLOACK para poder avisar cuando los dos
+// jugadores no tienen el mismo mod instalado. El protocolo (PROTO) no cambia:
+// dos builds distintas siguen hablando entre si, solo que se avisa. Subir esto
+// en cada version que se reparta.
+const BUILD = "7";
 const SEND_RATE = 0.05;      // 20 Hz
 const HELLO_RATE = 1.0;
 const PING_RATE = 2.0;
@@ -57,6 +66,7 @@ var CoopPuppet Puppet;
 
 var bool bConnected;
 var bool bIsHost;
+var bool bWarnedBuild;      // el aviso de version distinta se da una vez por sesion
 var float LastRecvTime;
 var float SendAccum;
 var float HelloAccum;
@@ -99,6 +109,31 @@ event PostBeginPlay()
         LastPort = 7777;
     log("[HP1Coop] manager up on " $ MapName());
     Enable('Tick');
+}
+
+// El nombre viaja dentro de un protocolo delimitado por "|", asi que una barra
+// en el nombre partiria el paquete y el receptor leeria basura. Se quitan, y se
+// recorta para que no desborde el HUD.
+function SetPlayerName(string s)
+{
+    local int i;
+
+    while (true)
+    {
+        i = InStr(s, "|");
+        if (i == -1)
+            break;
+        s = Left(s, i) $ Mid(s, i + 1);
+    }
+
+    if (s == "")
+        s = "Harry";
+    if (Len(s) > 16)
+        s = Left(s, 16);
+
+    PlayerName = s;
+    SaveConfig();
+    LogMsg("te llamas " $ PlayerName $ " (se lo digo al companero al saludar)");
 }
 
 function LogMsg(coerce string msg)
@@ -233,7 +268,7 @@ function ConnectTo(string ip, optional int port)
         // Knock straight away instead of waiting a full HELLO_RATE. Without
         // this the 20 Hz "S" stream reaches the host first and adopts the
         // session before names are ever exchanged.
-        Link.SendTo(PROTO $ "|HELLO|" $ PlayerName);
+        Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
     }
     else
     {
@@ -369,23 +404,25 @@ function OnPacket(string Text)
     {
         if (n >= 4)
             RemoteName = parts[3];
+        CheckPeerBuild(n, parts[4]);
         if (!bConnected)
         {
             bConnected = true;
             LastAnnouncedMap = "";
-            LogMsg(RemoteName $ " joined the game");
+            LogMsg(RemoteName $ " se ha unido a la partida");
         }
-        Link.SendTo(PROTO $ "|HELLOACK|" $ PlayerName);
+        Link.SendTo(PROTO $ "|HELLOACK|" $ PlayerName $ "|" $ BUILD);
     }
     else if (parts[2] == "HELLOACK")
     {
         if (n >= 4)
             RemoteName = parts[3];
+        CheckPeerBuild(n, parts[4]);
         if (!bConnected)
         {
             bConnected = true;
             LastAnnouncedMap = "";
-            LogMsg("connected to the host game of " $ RemoteName);
+            LogMsg("conectado a la partida de " $ RemoteName);
         }
     }
     else if (parts[2] == "PING")
@@ -421,7 +458,7 @@ function OnPacket(string Text)
         // Late or lost handshake: ask again rather than run the whole session
         // with an unnamed peer.
         if (RemoteName == "")
-            Link.SendTo(PROTO $ "|HELLO|" $ PlayerName);
+            Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
         RemoteMap  = parts[3];
         RLoc.X     = float(parts[4]);
         RLoc.Y     = float(parts[5]);
@@ -478,6 +515,40 @@ function OnPacket(string Text)
         HidePuppet();
         if (!bIsHost)
             HelloAccum = 0.0;
+    }
+}
+
+// Aviso de versiones distintas.
+//
+// Antes, si los dos jugadores tenian builds distintas, se conectaban igual y
+// luego pasaban cosas raras sin ningun mensaje: os veiais a medias, o no os
+// veiais, o un arreglo estaba en un lado y no en el otro. Era de los fallos
+// mas dificiles de diagnosticar porque no parecia un fallo.
+//
+// El saludo lleva ahora la etiqueta de build. Si no coincide se avisa UNA vez
+// por sesion, en pantalla y en el log. No se corta la conexion a proposito:
+// puede que la diferencia no importe, y decidirlo es cosa de los jugadores.
+//
+// Un peer sin etiqueta es anterior al Hito 7, y eso tambien se dice.
+function CheckPeerBuild(int n, string peerBuild)
+{
+    if (bWarnedBuild)
+        return;
+
+    if (n < 5 || peerBuild == "")
+    {
+        bWarnedBuild = true;
+        LogMsg("AVISO: " $ RemoteName $ " usa una version anterior del mod."
+             $ " Instalad los dos el mismo HP1Coop.u.");
+        return;
+    }
+
+    if (peerBuild != BUILD)
+    {
+        bWarnedBuild = true;
+        LogMsg("AVISO: versiones distintas del mod - tu build " $ BUILD
+             $ ", la de " $ RemoteName $ " build " $ peerBuild
+             $ ". Instalad los dos el mismo HP1Coop.u.");
     }
 }
 
@@ -638,7 +709,7 @@ event Tick(float dt)
         {
             HelloAccum = 0.0;
             if (bShowDebug) LogMsg("Enviando paquete HELLO a " $ LastHost $ "...");
-            Link.SendTo(PROTO $ "|HELLO|" $ PlayerName);
+            Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
         }
     }
 
@@ -657,9 +728,33 @@ event Tick(float dt)
             HidePuppet();
         if (Level.TimeSeconds - LastRecvTime > DROP_TIMEOUT)
         {
-            LogMsg("peer timed out");
+            // MEJORA (2026-08-27) - reconexion automatica de verdad.
+            //
+            // El cliente ya reintentaba solo, pero se quedaban restos de la
+            // sesion anterior: RemoteName con el nombre viejo y el aviso de
+            // version ya consumido, asi que un companero que volvia con otra
+            // build entraba sin avisar. Ademas HelloAccum seguia donde estaba
+            // y podia tardar hasta un segundo de mas en llamar.
+            //
+            // Al host no se le pide nada: no sabe a donde llamar. Es el cliente
+            // quien vuelve a picar a la puerta, y ahora lo hace de inmediato.
+            LogMsg("se perdio la conexion con " $ RemoteName);
             bConnected = false;
+            RemoteName = "";
+            RemoteMap = "";
+            LastAnnouncedMap = "";
+            bWarnedBuild = false;
             HidePuppet();
+
+            if (!bIsHost)
+            {
+                HelloAccum = HELLO_RATE;   // llamar ya, sin esperar el ciclo
+                LogMsg("reintentando conectar con " $ LastHost $ ":" $ LastPort $ "...");
+            }
+            else
+            {
+                LogMsg("esperando a que el companero vuelva a conectar...");
+            }
         }
     }
 
