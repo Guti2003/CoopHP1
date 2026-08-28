@@ -88,7 +88,7 @@ Los demás:      CoopConnect <ip-del-anfitrión>
 ```
 
 Con Hamachi, la IP del anfitrión es la que empieza por `25.` — por ejemplo
-`CoopConnect 25.26.239.149`.
+`CoopConnect 25.10.20.30`.
 
 Pónganse nombre para distinguirse: `CoopName TuNombre`. Se guarda solo.
 
@@ -106,7 +106,7 @@ Pónganse nombre para distinguirse: `CoopName TuNombre`. Se guarda solo.
 | `CoopDisconnect` | Cortar la sesión |
 
 Para usar un puerto distinto del 7777, **péguenlo con dos puntos**:
-`CoopConnect 25.26.239.149:7778`. La consola de UE1 reparte mal los argumentos
+`CoopConnect 25.10.20.30:7778`. La consola de UE1 reparte mal los argumentos
 cuando hay un texto seguido de un número.
 
 ---

@@ -171,14 +171,14 @@ exec function CoopHost(optional int port)
 }
 
 // Formas aceptadas:
-//     CoopConnect 25.26.239.149          (puerto 7777)
-//     CoopConnect 25.26.239.149:7778     (puerto explicito, forma recomendada)
-//     CoopConnect 25.26.239.149 7778     (funciona, pero ver el aviso de abajo)
+//     CoopConnect 25.10.20.30          (puerto 7777)
+//     CoopConnect 25.10.20.30:7778     (puerto explicito, forma recomendada)
+//     CoopConnect 25.10.20.30 7778     (funciona, pero ver el aviso de abajo)
 //
 // AVISO SOBRE LA CONSOLA DE UE1. El reparto de argumentos cuando hay un string
 // seguido de un int no es de fiar. Observado en partida con la misma orden:
-//     ip="25.26.239.149 7778"  port=0      -> se conectaba al 7777 sin avisar
-//     ip="25.26.239.149 778"   port=25     -> se perdio un caracter por el camino
+//     ip="25.10.20.30 7778"  port=0      -> se conectaba al 7777 sin avisar
+//     ip="25.10.20.30 778"   port=25     -> se perdio un caracter por el camino
 // Por eso el puerto se saca del propio texto en vez de confiar en el segundo
 // parametro: un solo token no tiene espacios y el motor no puede partirlo mal.
 // El parametro int se mantiene solo por si acaso llega bien.

@@ -11,7 +11,7 @@ lo que recogen se comparte.
 
 IMPORTANTE: esto NO incluye el juego. Necesitas tu propia copia instalada.
 
-TODOS TIENEN QUE INSTALAR ESTE MISMO ARCHIVO: 105.402 bytes exactos.
+TODOS TIENEN QUE INSTALAR ESTE MISMO ARCHIVO: 105.392 bytes exactos.
 Si las versiones no coinciden, el mod avisa al conectar.
 
 
@@ -75,7 +75,7 @@ COMO JUGAR
 
 5. Los demas se conectan a el:
 
-       CoopConnect 25.26.239.149
+       CoopConnect 25.10.20.30
 
    (con la IP de Hamachi del anfitrion, la que empieza por 25.)
 
@@ -114,7 +114,7 @@ COMANDOS
   CoopDisconnect               cortar la sesion
 
 Para un puerto distinto del 7777, peguenlo con dos puntos:
-  CoopConnect 25.26.239.149:7778
+  CoopConnect 25.10.20.30:7778
 
 
 QUE FUNCIONA Y QUE NO
