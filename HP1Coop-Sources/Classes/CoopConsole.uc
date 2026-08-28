@@ -149,12 +149,16 @@ exec function CoopHost(optional int port)
     }
 }
 
-exec function CoopConnect(string ip)
+// El puerto es opcional y por defecto 7777, igual que en CoopHost.
+//
+// Antes estaba fijo a 7777 aunque el LEEME lleva desde el principio diciendo
+// "CoopConnect <ip> [port]". O sea que hospedar en otro puerto se podia, pero
+// no habia forma de conectarse a el: la mitad de la funcionalidad no existia.
+exec function CoopConnect(string ip, optional int port)
 {
-    local int port;
     if (Ready())
     {
-        port = 7777;
+        if (port == 0) port = 7777;
         Message(None, "[HP1Coop] Conectando a la IP " $ ip $ ":" $ port $ "...", 'Console');
         Coop.ConnectTo(ip, port);
     }

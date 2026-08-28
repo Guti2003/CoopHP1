@@ -42,7 +42,7 @@ const PROTO = "HPCOOP|1";
 // jugadores no tienen el mismo mod instalado. El protocolo (PROTO) no cambia:
 // dos builds distintas siguen hablando entre si, solo que se avisa. Subir esto
 // en cada version que se reparta.
-const BUILD = "7";
+const BUILD = "8";
 const SEND_RATE = 0.05;      // 20 Hz
 const HELLO_RATE = 1.0;
 const PING_RATE = 2.0;
@@ -806,6 +806,33 @@ function CheckLocalSpell()
 
     // A new projectile actor exists that the local Harry just cast.
     LastSentSpell = s;
+
+    // BUG 5 (2026-08-27) - Wingardium Leviosa desincronizaba las dos partidas.
+    //
+    // Replicar el hechizo funciona porque un hechizo normal es un evento: sale,
+    // vuela, choca y explota, y la fisica del juego hace el resto igual en los
+    // dos mundos. Leviosa no es un evento, es una manipulacion SOSTENIDA: el
+    // hechizo lleva un baseSpell.target (el objeto que levita) y el jugador lo
+    // va moviendo con su punteria durante segundos.
+    //
+    // Nuestra copia nacia sin target, asi que SPELLPostLEV.Tick hacia
+    //     rot = rotator(location - target.location)
+    // contra None en cada fotograma - 6.081 avisos en una sola partida - y el
+    // objeto acababa en un sitio distinto en cada mundo.
+    //
+    // No se replica. El companero no vera levitar el objeto, pero cada mundo
+    // queda coherente consigo mismo, que es mucho mejor que dos mundos que
+    // discrepan. Sincronizarlo de verdad pide otra cosa: transmitir la posicion
+    // del objeto levitado mientras dura, identificandolo por nombre (los mapas
+    // son identicos en las dos partidas). Es viable, pero es un flujo continuo,
+    // no un evento, y merece su propio trabajo.
+    if (IsSustainedSpell(string(s.Class)))
+    {
+        if (bShowDebug)
+            LogMsg("hechizo sostenido no replicado: " $ string(s.Class));
+        return;
+    }
+
     SpellSeq++;
 
     SpellPkt = PROTO $ "|SP|" $ SpellSeq $ "|" $ string(s.Class)
@@ -823,10 +850,30 @@ function CheckLocalSpell()
 // Recreate the peer's projectile locally. Spawned unowned on purpose: it must
 // not be attributed to our Harry, and it must never feed back into
 // CheckLocalSpell (which only ever reads our own wand).
+// Un hechizo que necesita un objeto al que agarrarse no se puede recrear como
+// proyectil suelto: sin target hace destrozos. Ver BUG 5 en CheckLocalSpell.
+//
+// La comparacion es por texto y no por clase a proposito: asi vale igual para
+// "SPELLPostLEV" que para "HPBase.SPELLPostLEV", que es como puede llegar
+// segun quien lo mande.
+function bool IsSustainedSpell(string clsName)
+{
+    local string c;
+
+    c = Caps(clsName);
+    return (InStr(c, "SPELLPOSTLEV") != -1 || InStr(c, "SPELLLEV") != -1);
+}
+
 function ApplyRemoteSpell(string clsName, vector loc, rotator rot)
 {
     local class<baseSpell> c;
     local baseSpell s;
+
+    // Tambien se filtra al recibir: si el companero corre una build anterior
+    // seguira mandandolos, y no queremos que su version vieja nos rompa la
+    // partida a nosotros.
+    if (IsSustainedSpell(clsName))
+        return;
 
     c = class<baseSpell>(DynamicLoadObject(clsName, class'Class', true));
     if (c == None)
