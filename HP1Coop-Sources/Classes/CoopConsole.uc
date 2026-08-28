@@ -149,19 +149,50 @@ exec function CoopHost(optional int port)
     }
 }
 
-// El puerto es opcional y por defecto 7777, igual que en CoopHost.
+// Formas aceptadas:
+//     CoopConnect 25.26.239.149          (puerto 7777)
+//     CoopConnect 25.26.239.149:7778     (puerto explicito, forma recomendada)
+//     CoopConnect 25.26.239.149 7778     (funciona, pero ver el aviso de abajo)
 //
-// Antes estaba fijo a 7777 aunque el LEEME lleva desde el principio diciendo
-// "CoopConnect <ip> [port]". O sea que hospedar en otro puerto se podia, pero
-// no habia forma de conectarse a el: la mitad de la funcionalidad no existia.
+// AVISO SOBRE LA CONSOLA DE UE1. El reparto de argumentos cuando hay un string
+// seguido de un int no es de fiar. Observado en partida con la misma orden:
+//     ip="25.26.239.149 7778"  port=0      -> se conectaba al 7777 sin avisar
+//     ip="25.26.239.149 778"   port=25     -> se perdio un caracter por el camino
+// Por eso el puerto se saca del propio texto en vez de confiar en el segundo
+// parametro: un solo token no tiene espacios y el motor no puede partirlo mal.
+// El parametro int se mantiene solo por si acaso llega bien.
 exec function CoopConnect(string ip, optional int port)
 {
-    if (Ready())
+    local int i, p;
+    local string rest;
+
+    if (!Ready())
+        return;
+
+    // Quitar espacios de los extremos, que es de donde vienen los troceos raros.
+    while (Left(ip, 1) == " ")
+        ip = Mid(ip, 1);
+    while (Right(ip, 1) == " ")
+        ip = Left(ip, Len(ip) - 1);
+
+    // Puerto pegado a la IP, por ":" o por espacio.
+    i = InStr(ip, ":");
+    if (i == -1)
+        i = InStr(ip, " ");
+    if (i != -1)
     {
-        if (port == 0) port = 7777;
-        Message(None, "[HP1Coop] Conectando a la IP " $ ip $ ":" $ port $ "...", 'Console');
-        Coop.ConnectTo(ip, port);
+        rest = Mid(ip, i + 1);
+        ip = Left(ip, i);
+        p = int(rest);
+        if (p > 0 && p < 65536)
+            port = p;
     }
+
+    if (port <= 0 || port > 65535)
+        port = 7777;
+
+    Message(None, "[HP1Coop] Conectando a " $ ip $ ":" $ port $ "...", 'Console');
+    Coop.ConnectTo(ip, port);
 }
 
 exec function CoopDisconnect()

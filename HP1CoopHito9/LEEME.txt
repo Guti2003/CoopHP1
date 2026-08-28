@@ -1,0 +1,37 @@
+HP1 CO-OP - Hito 9
+HP1Coop.u = 69230 bytes.  LOS DOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+PUERTO DISTINTO DEL 7777 - USAD LOS DOS PUNTOS
+----------------------------------------------
+      CoopHost 7778
+      CoopConnect 25.26.239.149:7778
+
+La consola de UE1 reparte mal los argumentos cuando hay un texto seguido de
+un numero. Con la misma orden se vio esto en el log:
+
+      ip="25.26.239.149 7778"  puerto=0     -> se conectaba al 7777 sin avisar
+      ip="25.26.239.149 778"   puerto=25    -> se perdio un caracter
+
+Ahora el puerto se saca del propio texto, asi que escribiendolo pegado con
+":" el motor no puede partirlo mal. Con espacio tambien se acepta, pero los
+dos puntos es la forma segura.
+
+Sin poner puerto sigue siendo 7777.
+
+VIENE DEL HITO 8
+  Wingardium Leviosa ya no desincroniza las partidas (no se replica).
+
+VIENE DE ANTES
+  - el companero anima al saltar y escalar
+  - CoopHost funciona despues de CoopDisconnect
+  - no os perdeis al cambiar de nivel ni al morir
+  - aviso si los dos no teneis la misma version
+  - reconexion automatica
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopZ <n>                        CoopDebug
+  CoopDisconnect
+
+LA PRIMERA VEZ:   CoopName TuNombre    y    CoopZ 0

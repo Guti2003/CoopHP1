@@ -42,7 +42,7 @@ const PROTO = "HPCOOP|1";
 // jugadores no tienen el mismo mod instalado. El protocolo (PROTO) no cambia:
 // dos builds distintas siguen hablando entre si, solo que se avisa. Subir esto
 // en cada version que se reparta.
-const BUILD = "8";
+const BUILD = "9";
 const SEND_RATE = 0.05;      // 20 Hz
 const HELLO_RATE = 1.0;
 const PING_RATE = 2.0;
