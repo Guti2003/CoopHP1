@@ -222,19 +222,12 @@ exec function CoopDisconnect()
     }
 }
 
+// Con varios jugadores el estado ya no cabe en una linea: el manager lo imprime
+// el mismo, una linea por jugador conectado.
 exec function CoopStatus()
 {
-    local string role;
     if (Ready())
-    {
-        if (Coop.Link == None)
-        {
-            Message(None, "[HP1Coop] No hay sesion activa.", 'Console');
-            return;
-        }
-        if (Coop.bIsHost) role = "host"; else role = "client";
-        Message(None, "[HP1Coop] role=" $ role $ ", connected=" $ Coop.bConnected $ ", peer=" $ Coop.RemoteName $ ", sent=" $ Coop.SentCount $ ", recv=" $ Coop.RecvCount $ ", ping=" $ Coop.EstPingMs $ "ms", 'Console');
-    }
+        Coop.PrintStatus();
 }
 
 // Ron sank to the waist on the first play test; this makes the fix a 5 second

@@ -1,32 +1,41 @@
 //================================================================================
-// CoopManager - heart of the HP1 co-op mod. Milestone 1: pose sync only.
+// CoopManager - corazon del mod cooperativo de HP1.
 //
-// KEY ARCHITECTURAL DIFFERENCE FROM HP2COOP
+// DIFERENCIA CLAVE CON HP2COOP
 // -----------------------------------------
-// HP2Coop hooks the game by recompiling the player class with
-// "class CoopHarry injects harry", a non-standard keyword provided by the M212
-// toolchain. HP1 does not need that. This actor is created and kept alive by
-// CoopConsole, which the stock ini key
+// HP2Coop engancha el juego recompilando la clase del jugador con
+// "class CoopHarry injects harry", una palabra clave no estandar del compilador
+// de M212. HP1 no lo necesita. Este actor lo crea y lo mantiene vivo
+// CoopConsole, al que la clave del ini ya redirige:
 //     [Engine.Engine] Console=HP1Coop.CoopConsole
-// already redirects. Nothing in HarryPotter.u or HPBase.u is modified, so none
-// of the embedded meshes/textures in those 14 MB packages are at risk.
+// No se toca nada de HarryPotter.u ni de HPBase.u, asi que ninguna de las
+// mallas ni texturas incrustadas en esos 14 MB corre peligro.
 //
-// An earlier revision spawned this actor from
+// Una version anterior creaba este actor desde
 //     [Engine.GameEngine] ServerActors=HP1Coop.CoopManager
-// That was tested and does NOT work: UE1 only instantiates ServerActors when
-// the engine comes up as a server, and single-player HP1 is NM_Standalone. It
-// did work under "UCC server", which is what made the failure confusing.
+// Se probo y NO funciona: UE1 solo instancia los ServerActors cuando el motor
+// arranca como servidor, y HP1 en un jugador es NM_Standalone. Bajo "UCC
+// server" si funcionaba, que es lo que hacia el fallo tan confuso.
 //
-// Text protocol over UDP ("|" delimited) - identical to HP2Coop v1 so the two
-// codebases stay diffable:
-//   HPCOOP|1|HELLO|name|build
-//   HPCOOP|1|HELLOACK|name|build
-//   HPCOOP|1|PING|seq
-//   HPCOOP|1|PONG|seq
-//   HPCOOP|1|S|map|x|y|z|yaw|pitch|vx|vy|vz|anim|rate|hp
-//   HPCOOP|1|MAP|mapfile.unr
-//   HPCOOP|1|SP|seq|class|x|y|z|pitch|yaw   (sent 3x, deduped by seq)
-//   HPCOOP|1|BYE
+// VARIOS JUGADORES (protocolo 2)
+// ------------------------------
+// Topologia en estrella: los clientes solo hablan con el host y el host reenvia
+// a los demas. Asi solo hace falta abrir un puerto en un router, el del host.
+//
+// Cada jugador tiene un slot. El 0 es el host; los clientes reciben el suyo en
+// el WELCOME y lo escriben en cada paquete que mandan, de forma que todo el
+// mundo sabe de quien es cada cosa. El numero de slot que asigna el host es el
+// mismo que usa el transporte, asi que no hay dos numeraciones que casar.
+//
+// Protocolo de texto sobre UDP, delimitado por "|":
+//   HPCOOP|2|HELLO|nombre|build                 cliente -> host
+//   HPCOOP|2|WELCOME|slot|nombreHost|build      host -> cliente
+//   HPCOOP|2|PING|slot|seq   /  PONG|slot|seq
+//   HPCOOP|2|S|slot|mapa|x|y|z|yaw|pitch|vx|vy|vz|anim|rate|hp
+//   HPCOOP|2|MAP|slot|mapa
+//   HPCOOP|2|SP|slot|seq|clase|x|y|z|pitch|yaw   (se manda 3x, dedup por seq)
+//   HPCOOP|2|BYE|slot
+//
 // Los hechizos (SP) ya estan. PICK (objetos) se descarto a proposito: a los
 // jugadores les gusta que cada uno tenga sus grageas y cromos. LTRIG resulto
 // innecesario - los secretos de Lumos se activan con un spellTrigger, que solo
@@ -36,13 +45,19 @@
 class CoopManager extends Actor
   config;
 
-const PROTO = "HPCOOP|1";
+const PROTO = "HPCOOP|2";
 
-// Etiqueta de build. Viaja en HELLO/HELLOACK para poder avisar cuando los dos
-// jugadores no tienen el mismo mod instalado. El protocolo (PROTO) no cambia:
-// dos builds distintas siguen hablando entre si, solo que se avisa. Subir esto
-// en cada version que se reparta.
-const BUILD = "10";
+// Etiqueta de build. Viaja en HELLO/WELCOME para poder avisar cuando los dos
+// jugadores no tienen el mismo mod instalado. Subir esto en cada version que se
+// reparta.
+const BUILD = "11";
+
+// Jugadores simultaneos, host incluido. Subirlo es cambiar esta constante y los
+// tamanos de los arrays (UE1 no acepta constantes como tamano de array). Antes
+// de subirlo mucho conviene medir: el host reenvia el trafico de todos a todos,
+// asi que el coste crece con el cuadrado de los jugadores.
+const MAX_SLOTS = 4;
+
 const SEND_RATE = 0.05;      // 20 Hz
 const HELLO_RATE = 1.0;
 const PING_RATE = 2.0;
@@ -52,22 +67,20 @@ const DROP_TIMEOUT = 10.0;
 var config string LastHost;
 var config int LastPort;
 var config string PlayerName;
-var config bool bAutoHost;      // this instance hosts as soon as a level loads
-var config bool bAutoConnect;   // this instance dials LastHost as soon as a level loads
+var config bool bAutoHost;      // hospeda en cuanto carga un nivel
+var config bool bAutoConnect;   // llama a LastHost en cuanto carga un nivel
 var config bool bShowDebug;
-// Vertical re-base from Harry's cylinder centre to Ron's. See CoopPuppet.
-// Tunable live with CoopZ because it depends on mesh origins baked into
-// HarryPotter.u.
+// Re-base vertical del centro del cilindro. Ver CoopPuppet. Ajustable en vivo
+// con CoopZ porque depende de origenes de malla horneados en HarryPotter.u.
 var config float PuppetZOffset;
 
 var PlayerPawn Player;       // HP1: Harry extends baseHarry extends PlayerPawn
 var CoopLink Link;
-var CoopPuppet Puppet;
 
 var bool bConnected;
 var bool bIsHost;
 var bool bBindFailWarned;   // el aviso de puerto ocupado se da una vez
-var bool bWarnedBuild;      // el aviso de version distinta se da una vez por sesion
+var bool bWarnedBuild;      // el aviso de version distinta se da una vez
 var float LastRecvTime;
 var float SendAccum;
 var float HelloAccum;
@@ -79,25 +92,37 @@ var int PingSeq;
 var float PingSentAt;
 var int EstPingMs;
 
-var string RemoteName;
-var string RemoteMap;
-var string LastAnnouncedMap;
-var vector RLoc;
-var rotator RRot;
-var vector RVel;
-var name RAnim;
-var float RAnimRate;
-var int RHealth;
+// Nuestro numero de jugador. 0 = host. -1 = cliente que todavia no ha sido
+// admitido, y mientras tanto no manda estado: sin slot no se le podria
+// atribuir.
+var int MySlot;
 
-// Spell sync. We do NOT hook Harry.Cast() - that would need package injection.
-// baseWand already records its own last shot in LastCastedSpell, so detecting a
-// new cast is one pointer comparison per tick instead of an AllActors sweep.
+// Estado de los demas jugadores, indexado por slot.
+// UE1 no admite arrays de bool: se usan bytes (0 = inactivo, 1 = activo).
+var byte SlotActive[4];
+var string SlotName[4];
+var string SlotMap[4];
+var vector SlotLoc[4];
+var rotator SlotRot[4];
+var vector SlotVel[4];
+var name SlotAnim[4];
+var float SlotAnimRate[4];
+var int SlotHealth[4];
+var float SlotLastRecv[4];
+var int SlotLastSpellSeq[4];
+var CoopPuppet Puppets[4];
+
+var string LastAnnouncedMap;
+
+// Sincronizacion de hechizos. NO se engancha Harry.Cast() - eso obligaria a
+// inyectar codigo en el paquete del juego. baseWand ya apunta su ultimo disparo
+// en LastCastedSpell, asi que detectar un lanzamiento es una comparacion de
+// punteros por tick en vez de recorrer actores.
 var baseSpell LastSentSpell;
-// A cast is a one-off event, not a stream: if its packet is lost the spell
-// simply never appears for the peer. So it goes out three times and the
-// receiver drops repeats by sequence number.
+// Un lanzamiento es un evento, no un flujo: si se pierde su paquete el hechizo
+// simplemente no aparece. Por eso sale tres veces y el receptor descarta las
+// repeticiones por numero de secuencia.
 var int SpellSeq;
-var int LastRecvSpellSeq;
 
 // ---------------------------------------------------------------------------
 
@@ -108,6 +133,7 @@ event PostBeginPlay()
         PlayerName = "Harry";
     if (LastPort == 0)
         LastPort = 7777;
+    MySlot = -1;
     log("[HP1Coop] manager up on " $ MapName());
     Enable('Tick');
 }
@@ -134,7 +160,7 @@ function SetPlayerName(string s)
 
     PlayerName = s;
     SaveConfig();
-    LogMsg("te llamas " $ PlayerName $ " (se lo digo al companero al saludar)");
+    LogMsg("te llamas " $ PlayerName $ " (se lo digo a los demas al saludar)");
 }
 
 function LogMsg(coerce string msg)
@@ -144,8 +170,8 @@ function LogMsg(coerce string msg)
         Player.ClientMessage("[HP1Coop] " $ msg);
 }
 
-// The local player pawn is not guaranteed to exist when ServerActors are
-// spawned, and the game swaps it during cutscenes - so re-acquire lazily.
+// El pawn local no existe garantizado cuando se crea este actor, y el juego lo
+// cambia durante las cinematicas, asi que se re-adquiere de forma perezosa.
 function bool EnsurePlayer()
 {
     local PlayerPawn p;
@@ -191,7 +217,7 @@ static function int StrSplit(coerce string Text, string delim, out string parts[
 }
 
 // ---------------------------------------------------------------------------
-// Session control
+// Control de sesion
 // ---------------------------------------------------------------------------
 
 // ARREGLO BUG 2 (2026-08-27) - re-hospedar fallaba con "failed to bind UDP
@@ -210,26 +236,27 @@ function Host(optional int port)
     if (port == 0)
         port = 7777;
 
+    bIsHost = true;
+    MySlot = 0;
+
     if (Link != None && !Link.bDeleteMe && Link.BoundPort == port)
     {
-        // Ya estamos escuchando en ese puerto: reciclar en vez de re-bindear.
         ResetSession();
         Link.Reset();
-        bIsHost = true;
         bAutoHost = true;
         bAutoConnect = false;
         LastPort = port;
         SaveConfig();
-        LogMsg("hosting on UDP port " $ port $ ", waiting for a player...");
+        LogMsg("hospedando en el puerto UDP " $ port $ ", esperando jugadores...");
         return;
     }
 
     DisconnectLink();
+    bIsHost = true;
+    MySlot = 0;
 
     Link = Spawn(class'CoopLink');
     Link.Init(Self);
-    bIsHost = true;
-    bConnected = false;
     ResetStats();
 
     if (Link.StartHost(port))
@@ -264,7 +291,7 @@ function ConnectTo(string ip, optional int port)
     Link = Spawn(class'CoopLink');
     Link.Init(Self);
     bIsHost = false;
-    bConnected = false;
+    MySlot = -1;             // hasta que el host nos admita
     HelloAccum = 0.0;
     ResetStats();
 
@@ -275,9 +302,7 @@ function ConnectTo(string ip, optional int port)
         bAutoConnect = true;
         bAutoHost = false;
         SaveConfig();
-        // Knock straight away instead of waiting a full HELLO_RATE. Without
-        // this the 20 Hz "S" stream reaches the host first and adopts the
-        // session before names are ever exchanged.
+        // Llamar ya en vez de esperar un HELLO_RATE entero.
         Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
     }
     else
@@ -289,35 +314,36 @@ function ConnectTo(string ip, optional int port)
 
 // Parte del ARREGLO BUG 2: al desconectar se conserva el socket. Antes se
 // destruia, y como UE1 no lo cierra hasta la recogida de basura, el siguiente
-// CoopHost no podia volver a coger el puerto. Conservarlo es ademas mas barato:
-// re-hospedar pasa a ser instantaneo.
+// CoopHost no podia volver a coger el puerto.
 function DisconnectNow()
 {
     if (Link != None)
     {
-        Link.SendTo(PROTO $ "|BYE");
+        if (MySlot >= 0)
+            Link.SendTo(PROTO $ "|BYE|" $ MySlot);
         Link.Reset();
     }
     ResetSession();
     bAutoHost = false;
     bAutoConnect = false;
     SaveConfig();
-    LogMsg("disconnected");
+    LogMsg("desconectado");
 }
 
 // Limpia el estado de la sesion sin tocar el socket.
 function ResetSession()
 {
+    local int i;
+
     bConnected = false;
-    RemoteName = "";
-    RemoteMap = "";
     LastAnnouncedMap = "";
+    for (i = 0; i < 4; i++)
+        ClearSlot(i);
     ResetStats();
-    HidePuppet();
 }
 
-// Cierre completo, socket incluido. Se usa al cambiar de puerto y al recoger
-// el nivel; para CoopDisconnect basta con ResetSession().
+// Cierre completo, socket incluido. Se usa al cambiar de puerto y al recoger el
+// nivel; para CoopDisconnect basta con ResetSession().
 function DisconnectLink()
 {
     if (Link != None)
@@ -325,10 +351,18 @@ function DisconnectLink()
         Link.Destroy();
         Link = None;
     }
-    bConnected = false;
-    RemoteName = "";
-    LastAnnouncedMap = "";
-    HidePuppet();
+    ResetSession();
+}
+
+function ClearSlot(int slot)
+{
+    if (slot < 0 || slot >= 4)
+        return;
+    SlotActive[slot] = 0;
+    SlotName[slot] = "";
+    SlotMap[slot] = "";
+    SlotLastSpellSeq[slot] = 0;
+    HidePuppet(slot);
 }
 
 function ResetStats()
@@ -338,40 +372,64 @@ function ResetStats()
     EstPingMs = 0;
     PingSeq = 0;
     SpellSeq = 0;
-    LastRecvSpellSeq = 0;
+}
+
+// Cuantos jugadores hay aparte de nosotros.
+function int PeerCount()
+{
+    local int i, n;
+
+    for (i = 0; i < 4; i++)
+        if (i != MySlot && SlotActive[i] != 0)
+            n++;
+    return n;
 }
 
 function PrintStatus()
 {
     local string role;
+    local int i;
 
     if (Link == None)
     {
-        LogMsg("no session. Use CoopHost [port] or CoopConnect <ip> [port]");
+        LogMsg("sin sesion. Usa CoopHost [puerto] o CoopConnect <ip>[:puerto]");
         return;
     }
     if (bIsHost)
         role = "host";
     else
-        role = "client";
+        role = "cliente";
 
-    LogMsg("role=" $ role $ ", connected=" $ bConnected $ ", peer=" $ RemoteName
-         $ ", peerMap=" $ RemoteMap $ ", sent=" $ SentCount $ ", recv=" $ RecvCount
+    LogMsg(role $ ", slot=" $ MySlot $ ", jugadores=" $ (PeerCount() + 1)
+         $ ", enviados=" $ SentCount $ ", recibidos=" $ RecvCount
          $ ", ping=" $ EstPingMs $ "ms");
+
+    for (i = 0; i < 4; i++)
+    {
+        if (i == MySlot || SlotActive[i] == 0)
+            continue;
+        LogMsg("  [" $ i $ "] " $ SlotName[i] $ " en " $ SlotMap[i]
+             $ " (HP " $ SlotHealth[i] $ ")");
+    }
 }
 
-// Live height tuning: CoopZ <n>. Re-places the puppet so the change is visible
-// immediately instead of on the next level.
+// Ajuste de altura en vivo: CoopZ <n>. Re-coloca los munecos para que el
+// cambio se vea al momento en vez de en el nivel siguiente.
 function SetZOffset(float z)
 {
+    local int i;
+
     PuppetZOffset = z;
     SaveConfig();
-    if (Puppet != None)
+    for (i = 0; i < 4; i++)
     {
-        Puppet.ZOffset = z;
-        Puppet.bDidFirstPlace = false;
+        if (Puppets[i] != None && !Puppets[i].bDeleteMe)
+        {
+            Puppets[i].ZOffset = z;
+            Puppets[i].bDidFirstPlace = false;
+        }
     }
-    LogMsg("puppet Z offset = " $ PuppetZOffset);
+    LogMsg("altura de los munecos = " $ PuppetZOffset);
 }
 
 function ToggleDebug()
@@ -382,18 +440,16 @@ function ToggleDebug()
 }
 
 // ---------------------------------------------------------------------------
-// Packet handling
+// Paquetes
 // ---------------------------------------------------------------------------
 
-function OnPeerFound(string addr)
-{
-    LogMsg("incoming player from " $ addr);
-}
-
-function OnPacket(string Text)
+// fromSlot es el slot de TRANSPORTE: para el host, en que plaza de su tabla
+// esta la direccion que mando el paquete (-1 si es un desconocido). Para el
+// cliente siempre 0, porque solo recibe del host.
+function OnPacketFrom(string Text, int fromSlot)
 {
     local string parts[24];
-    local int n, seq;
+    local int n, s, seq;
     local float ms;
     local vector SpLoc;
     local rotator SpRot;
@@ -401,50 +457,91 @@ function OnPacket(string Text)
     n = StrSplit(Text, "|", parts);
     if (n < 3)
         return;
+
+    // Version del protocolo. Un mod mas viejo habla "HPCOOP|1" y sus paquetes
+    // no se pueden interpretar, pero callarse seria el peor de los mundos: el
+    // otro veria que no pasa nada y no sabria por que.
     if ((parts[0] $ "|" $ parts[1]) != PROTO)
+    {
+        if (!bWarnedBuild)
+        {
+            bWarnedBuild = true;
+            LogMsg("AVISO: alguien usa una version incompatible del mod"
+                 $ " (protocolo " $ parts[1] $ ", el nuestro es "
+                 $ Mid(PROTO, 7) $ "). Instalad todos el mismo HP1Coop.u.");
+        }
         return;
+    }
 
     if (bShowDebug && parts[2] != "S")
-        LogMsg("Recibido paquete: " $ parts[2]);
+        LogMsg("recibido: " $ parts[2]);
 
     LastRecvTime = Level.TimeSeconds;
     RecvCount++;
 
+    // -------------------------------------------------------------- HELLO
     if (parts[2] == "HELLO")
     {
+        if (!bIsHost)
+            return;                     // solo el host admite jugadores
+
+        // Un jugador que cambia de nivel vuelve con otro puerto de origen, o
+        // sea otra direccion, y ocuparia una segunda plaza mientras la vieja
+        // caduca. Si ya hay alguien con ese nombre, esa plaza es suya.
         if (n >= 4)
-            RemoteName = parts[3];
-        CheckPeerBuild(n, parts[4]);
-        if (!bConnected)
+            DropSlotByName(parts[3], fromSlot);
+
+        s = Link.AdoptPending();
+        if (s == -1)
         {
-            bConnected = true;
-            LastAnnouncedMap = "";
-            LogMsg(RemoteName $ " se ha unido a la partida");
+            LogMsg("partida llena: " $ parts[3] $ " no cabe");
+            return;
         }
-        Link.SendTo(PROTO $ "|HELLOACK|" $ PlayerName $ "|" $ BUILD);
+
+        SlotActive[s] = 1;
+        SlotLastRecv[s] = Level.TimeSeconds;
+        if (n >= 4)
+            SlotName[s] = parts[3];
+        CheckPeerBuild(n, parts[4], SlotName[s]);
+
+        Link.SendToSlot(s, PROTO $ "|WELCOME|" $ s $ "|" $ PlayerName $ "|" $ BUILD);
+        LogMsg(SlotName[s] $ " se ha unido a la partida (slot " $ s $ ")");
+        bConnected = true;
+        LastAnnouncedMap = "";          // anunciar el mapa al recien llegado
     }
-    else if (parts[2] == "HELLOACK")
+    // ------------------------------------------------------------ WELCOME
+    else if (parts[2] == "WELCOME")
     {
-        if (n >= 4)
-            RemoteName = parts[3];
-        CheckPeerBuild(n, parts[4]);
-        if (!bConnected)
-        {
-            bConnected = true;
-            LastAnnouncedMap = "";
-            LogMsg("conectado a la partida de " $ RemoteName);
-        }
+        if (bIsHost || n < 4)
+            return;
+
+        MySlot = int(parts[3]);
+        SlotActive[0] = 1;
+        SlotLastRecv[0] = Level.TimeSeconds;
+        if (n >= 5)
+            SlotName[0] = parts[4];
+        CheckPeerBuild(n - 1, parts[5], SlotName[0]);
+
+        bConnected = true;
+        LastAnnouncedMap = "";
+        LogMsg("conectado a la partida de " $ SlotName[0] $ " como jugador " $ MySlot);
     }
+    // --------------------------------------------------------------- PING
     else if (parts[2] == "PING")
     {
-        if (n >= 4)
-            Link.SendTo(PROTO $ "|PONG|" $ parts[3]);
+        if (n >= 5)
+        {
+            if (bIsHost)
+                Link.SendToSlot(fromSlot, PROTO $ "|PONG|" $ MySlot $ "|" $ parts[4]);
+            else
+                Link.SendTo(PROTO $ "|PONG|" $ MySlot $ "|" $ parts[4]);
+        }
     }
     else if (parts[2] == "PONG")
     {
-        if (n >= 4)
+        if (n >= 5)
         {
-            seq = int(parts[3]);
+            seq = int(parts[4]);
             if (seq == PingSeq && PingSentAt > 0.0)
             {
                 ms = (Level.TimeSeconds - PingSentAt) * 1000.0;
@@ -455,92 +552,152 @@ function OnPacket(string Text)
             }
         }
     }
+    // ------------------------------------------------------------- ESTADO
     else if (parts[2] == "S")
     {
-        if (n < 15)
+        if (n < 16)
             return;
-        if (!bConnected)
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        if (SlotActive[s] == 0)
         {
-            bConnected = true;
-            LastAnnouncedMap = "";      // force a MAP announce now that we have a peer
-            LogMsg("player state stream started");
+            SlotActive[s] = 1;
+            LogMsg("empieza a llegar el estado del jugador " $ s);
         }
-        // Late or lost handshake: ask again rather than run the whole session
-        // with an unnamed peer.
-        if (RemoteName == "")
-            Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
-        RemoteMap  = parts[3];
-        RLoc.X     = float(parts[4]);
-        RLoc.Y     = float(parts[5]);
-        RLoc.Z     = float(parts[6]);
-        RRot.Yaw   = int(parts[7]);
-        RRot.Pitch = int(parts[8]);
-        RRot.Roll  = 0;
-        RVel.X     = float(parts[9]);
-        RVel.Y     = float(parts[10]);
-        RVel.Z     = float(parts[11]);
-        RAnim      = name(parts[12]);
-        RAnimRate  = float(parts[13]);
-        RHealth    = int(parts[14]);
-        UpdatePuppet();
+        SlotLastRecv[s] = Level.TimeSeconds;
+        SlotMap[s]        = parts[4];
+        SlotLoc[s].X      = float(parts[5]);
+        SlotLoc[s].Y      = float(parts[6]);
+        SlotLoc[s].Z      = float(parts[7]);
+        SlotRot[s].Yaw    = int(parts[8]);
+        SlotRot[s].Pitch  = int(parts[9]);
+        SlotRot[s].Roll   = 0;
+        SlotVel[s].X      = float(parts[10]);
+        SlotVel[s].Y      = float(parts[11]);
+        SlotVel[s].Z      = float(parts[12]);
+        SlotAnim[s]       = name(parts[13]);
+        SlotAnimRate[s]   = float(parts[14]);
+        SlotHealth[s]     = int(parts[15]);
+        UpdatePuppet(s);
+
+        Relay(Text, fromSlot);
     }
+    // ---------------------------------------------------------------- MAPA
     else if (parts[2] == "MAP")
     {
-        if (n >= 4)
+        if (n < 5)
+            return;
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        SlotMap[s] = parts[4];
+        LogMsg(SlotName[s] $ " se ha ido a " $ SlotMap[s]);
+
+        // Seguir SOLO al host. Con varios jugadores seguir a cualquiera seria
+        // un tira y afloja: dos personas en niveles distintos se arrastrarian
+        // la una a la otra sin parar.
+        if (!bIsHost && s == 0 && Player != None && SlotMap[0] != MapName())
         {
-            RemoteMap = parts[3];
-            if (RemoteName != "")
-                LogMsg(RemoteName $ " moved to " $ RemoteMap);
-            else
-                LogMsg("peer moved to " $ RemoteMap);
-                
-            // Follow peer if we are the client and in a different map
-            if (!bIsHost && Player != None && RemoteMap != MapName())
-            {
-                LogMsg("Following peer to " $ RemoteMap);
-                Player.ClientTravel(RemoteMap, TRAVEL_Absolute, false);
-            }
+            LogMsg("siguiendo al host a " $ SlotMap[0]);
+            Player.ClientTravel(SlotMap[0], TRAVEL_Absolute, false);
         }
+
+        Relay(Text, fromSlot);
     }
+    // ------------------------------------------------------------- HECHIZO
     else if (parts[2] == "SP")
     {
-        if (n < 10)
+        if (n < 11)
             return;
-        seq = int(parts[3]);
-        if (seq <= LastRecvSpellSeq)
-            return;                     // repeat of a cast we already played
-        LastRecvSpellSeq = seq;
-        SpLoc.X     = float(parts[5]);
-        SpLoc.Y     = float(parts[6]);
-        SpLoc.Z     = float(parts[7]);
-        SpRot.Pitch = int(parts[8]);
-        SpRot.Yaw   = int(parts[9]);
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        seq = int(parts[4]);
+        if (seq <= SlotLastSpellSeq[s])
+            return;                     // repeticion de un lanzamiento ya visto
+        SlotLastSpellSeq[s] = seq;
+
+        SpLoc.X     = float(parts[6]);
+        SpLoc.Y     = float(parts[7]);
+        SpLoc.Z     = float(parts[8]);
+        SpRot.Pitch = int(parts[9]);
+        SpRot.Yaw   = int(parts[10]);
         SpRot.Roll  = 0;
-        ApplyRemoteSpell(parts[4], SpLoc, SpRot);
+        ApplyRemoteSpell(parts[5], SpLoc, SpRot);
+
+        Relay(Text, fromSlot);
     }
+    // ----------------------------------------------------------------- BYE
     else if (parts[2] == "BYE")
     {
-        LogMsg(RemoteName $ " left the game");
-        bConnected = false;
-        HidePuppet();
-        if (!bIsHost)
-            HelloAccum = 0.0;
+        if (n < 4)
+            return;
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        LogMsg(SlotName[s] $ " ha dejado la partida");
+        ClearSlot(s);
+        if (bIsHost)
+            Link.FreeSlot(s);
+        if (!bIsHost && s == 0)
+        {
+            // Se fue el host: volver a picar a la puerta.
+            bConnected = false;
+            MySlot = -1;
+            HelloAccum = HELLO_RATE;
+        }
+        bConnected = (PeerCount() > 0);
+
+        Relay(Text, fromSlot);
+    }
+}
+
+// El host es el unico camino entre clientes: lo que le llega de uno tiene que
+// llegar a los demas, o cada cliente solo veria al host.
+function Relay(string Text, int fromSlot)
+{
+    if (bIsHost && fromSlot > 0)
+        Link.SendToAllExcept(fromSlot, Text);
+}
+
+// Un jugador que vuelve tras cambiar de nivel llega desde otro puerto, o sea
+// otra direccion. Sin esto ocuparia una plaza nueva y la vieja seguiria viva
+// hasta caducar, gastando sitio y dejando su muneco plantado.
+function DropSlotByName(string nm, int exceptSlot)
+{
+    local int i;
+
+    if (nm == "")
+        return;
+
+    for (i = 1; i < 4; i++)
+    {
+        if (i != exceptSlot && SlotActive[i] != 0 && SlotName[i] == nm)
+        {
+            if (bShowDebug)
+                LogMsg("liberando la plaza anterior de " $ nm $ " (slot " $ i $ ")");
+            ClearSlot(i);
+            Link.FreeSlot(i);
+        }
     }
 }
 
 // Aviso de versiones distintas.
 //
-// Antes, si los dos jugadores tenian builds distintas, se conectaban igual y
-// luego pasaban cosas raras sin ningun mensaje: os veiais a medias, o no os
-// veiais, o un arreglo estaba en un lado y no en el otro. Era de los fallos
-// mas dificiles de diagnosticar porque no parecia un fallo.
+// Antes, si dos jugadores tenian builds distintas, se conectaban igual y luego
+// pasaban cosas raras sin ningun mensaje: os veiais a medias, o no os veiais, o
+// un arreglo estaba en un lado y no en el otro. Era de los fallos mas dificiles
+// de diagnosticar porque no parecia un fallo.
 //
-// El saludo lleva ahora la etiqueta de build. Si no coincide se avisa UNA vez
-// por sesion, en pantalla y en el log. No se corta la conexion a proposito:
-// puede que la diferencia no importe, y decidirlo es cosa de los jugadores.
-//
-// Un peer sin etiqueta es anterior al Hito 7, y eso tambien se dice.
-function CheckPeerBuild(int n, string peerBuild)
+// El saludo lleva la etiqueta de build. Si no coincide se avisa UNA vez, en
+// pantalla y en el log. No se corta la conexion a proposito: puede que la
+// diferencia no importe, y decidirlo es cosa de los jugadores.
+function CheckPeerBuild(int n, string peerBuild, string who)
 {
     if (bWarnedBuild)
         return;
@@ -548,30 +705,33 @@ function CheckPeerBuild(int n, string peerBuild)
     if (n < 5 || peerBuild == "")
     {
         bWarnedBuild = true;
-        LogMsg("AVISO: " $ RemoteName $ " usa una version anterior del mod."
-             $ " Instalad los dos el mismo HP1Coop.u.");
+        LogMsg("AVISO: " $ who $ " usa una version anterior del mod."
+             $ " Instalad todos el mismo HP1Coop.u.");
         return;
     }
 
     if (peerBuild != BUILD)
     {
         bWarnedBuild = true;
-        LogMsg("AVISO: versiones distintas del mod - tu build " $ BUILD
-             $ ", la de " $ RemoteName $ " build " $ peerBuild
-             $ ". Instalad los dos el mismo HP1Coop.u.");
+        LogMsg("AVISO: versiones distintas - la tuya es la " $ BUILD
+             $ " y la de " $ who $ " la " $ peerBuild
+             $ ". Instalad todos el mismo HP1Coop.u.");
     }
 }
 
 // ---------------------------------------------------------------------------
-// Puppet
+// Munecos
 // ---------------------------------------------------------------------------
 
-function UpdatePuppet()
+function UpdatePuppet(int slot)
 {
-    // Only mirror the peer while both of us stand in the same level.
-    if (RemoteMap != MapName())
+    if (slot < 0 || slot >= 4 || slot == MySlot)
+        return;
+
+    // Solo se refleja a quien esta en nuestro mismo nivel.
+    if (SlotMap[slot] != MapName())
     {
-        HidePuppet();
+        HidePuppet(slot);
         return;
     }
     if (Player == None)
@@ -588,39 +748,47 @@ function UpdatePuppet()
     //
     // Es el mismo patron del bug "zombi" que ya estaba documentado para el
     // manager en la cabecera de esta clase, solo que aqui no se habia aplicado.
-    // Comprobar bDeleteMe ademas de None lo resuelve, y de paso se recupera
-    // solo de cualquier otra cosa que mate al muneco.
-    if (Puppet == None || Puppet.bDeleteMe)
+    if (Puppets[slot] == None || Puppets[slot].bDeleteMe)
     {
-        Puppet = Spawn(class'CoopPuppet');
-        if (Puppet == None)
+        Puppets[slot] = Spawn(class'CoopPuppet');
+        if (Puppets[slot] == None)
         {
-            log("[HP1Coop] failed to spawn puppet");
+            log("[HP1Coop] failed to spawn puppet for slot " $ slot);
             return;
         }
         if (bShowDebug)
-            LogMsg("muneco (re)creado");
+            LogMsg("muneco (re)creado para el slot " $ slot);
     }
 
-    // Must be set before the first placement, which traces to the floor.
-    Puppet.ZOffset = PuppetZOffset;
+    // Tiene que estar puesto antes de la primera colocacion, que traza al suelo.
+    Puppets[slot].ZOffset = PuppetZOffset;
 
-    if (!Puppet.bDidFirstPlace)
-        Puppet.PlaceFirstTime(RLoc, RRot, Player.Location, Player.Rotation);
+    if (!Puppets[slot].bDidFirstPlace)
+        Puppets[slot].PlaceFirstTime(SlotLoc[slot], SlotRot[slot],
+                                     Player.Location, Player.Rotation);
 
-    Puppet.bHidden = false;
-    Puppet.SetTarget(RLoc, RVel, RRot, RAnim, RAnimRate, RemoteName);
+    Puppets[slot].bHidden = false;
+    Puppets[slot].SetTarget(SlotLoc[slot], SlotVel[slot], SlotRot[slot],
+                            SlotAnim[slot], SlotAnimRate[slot], SlotName[slot]);
 }
 
-function HidePuppet()
+function HidePuppet(int slot)
 {
-    if (Puppet != None)
-        Puppet.bHidden = true;
+    if (slot >= 0 && slot < 4 && Puppets[slot] != None && !Puppets[slot].bDeleteMe)
+        Puppets[slot].bHidden = true;
 }
 
-// Startup.unr is the front-end menu and Entry.unr the engine's boot map.
-// Auto-hosting there binds port 7777 to a manager that dies the moment the
-// player loads a save, and the real level then cannot bind it.
+function HideAllPuppets()
+{
+    local int i;
+
+    for (i = 0; i < 4; i++)
+        HidePuppet(i);
+}
+
+// Startup.unr es el menu y Entry.unr el mapa de arranque del motor. Hospedar
+// ahi ataria el puerto a un manager que muere en cuanto se carga una partida, y
+// entonces el nivel de verdad ya no podria cogerlo.
 function bool bIsMenuMap()
 {
     local string m;
@@ -632,7 +800,7 @@ function bool bIsMenuMap()
 //
 // Level.Outer.Name NO sirve: en HP1 una partida guardada ES un mapa. Cargar
 // desde el menu ejecuta literalmente  open save0.usa  (FESlotPage.uc:252), asi
-// que el paquete del nivel pasa a llamarse "save0" y los dos jugadores dejan de
+// que el paquete del nivel pasa a llamarse "save0" y los jugadores dejan de
 // coincidir en cuanto uno cruza una transicion y el otro no. Observado en
 // partida: uno en "save0", el otro en "LEV_TUT1B", y el muneco desaparece.
 // Peor aun, la logica de seguimiento intentaba ClientTravel("save0").
@@ -658,7 +826,6 @@ function string MapName()
     if (s != "")
         return Caps(s);
 
-    // Sin LevelEnterText no hay nada mejor que el nombre del paquete.
     return Caps(string(Level.Outer.Name));
 }
 
@@ -670,21 +837,29 @@ function DrawHUD(canvas C)
 {
     local string S;
     local float XL, YL;
-    
-    if (!bConnected || RemoteName == "")
+    local int i, shown;
+
+    if (!bConnected)
         return;
-        
+
     C.DrawColor.R = 255;
     C.DrawColor.G = 255;
     C.DrawColor.B = 255;
-    
-    S = "Co-op: Connected to " $ RemoteName;
-    if (RHealth > 0)
-        S = S $ " (HP: " $ RHealth $ ")";
-        
-    C.TextSize(S, XL, YL);
-    C.SetPos(10, C.ClipY - YL - 30); // Draw at the bottom left, above console
-    C.DrawText(S, false);
+
+    for (i = 0; i < 4; i++)
+    {
+        if (i == MySlot || SlotActive[i] == 0 || SlotName[i] == "")
+            continue;
+
+        S = "Co-op: " $ SlotName[i];
+        if (SlotHealth[i] > 0)
+            S = S $ " (HP: " $ SlotHealth[i] $ ")";
+
+        C.TextSize(S, XL, YL);
+        C.SetPos(10, C.ClipY - YL - 30 - shown * (YL + 2));
+        C.DrawText(S, false);
+        shown++;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -692,8 +867,9 @@ function DrawHUD(canvas C)
 event Tick(float dt)
 {
     local string pkt;
+    local int i;
 
-    // Re-acquire the local pawn at most twice a second.
+    // Re-adquirir el pawn local como mucho dos veces por segundo.
     FindAccum += dt;
     if (FindAccum >= 0.5)
     {
@@ -711,19 +887,22 @@ event Tick(float dt)
     if (Player == None || Link == None)
         return;
 
-    // Client keeps knocking until the host answers.
-    if (!bIsHost && !bConnected)
+    // El cliente sigue picando a la puerta hasta que el host le da un slot.
+    if (!bIsHost && MySlot < 0)
     {
         HelloAccum += dt;
         if (HelloAccum >= HELLO_RATE)
         {
             HelloAccum = 0.0;
-            if (bShowDebug) LogMsg("Enviando paquete HELLO a " $ LastHost $ "...");
+            if (bShowDebug)
+                LogMsg("enviando HELLO a " $ LastHost $ "...");
             Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
         }
     }
 
-    if (bConnected)
+    // Ping. Lo mide el cliente contra el host; al host le basta con el
+    // "ultima vez que supe de ti" de cada slot.
+    if (bConnected && !bIsHost && MySlot >= 0)
     {
         PingAccum += dt;
         if (PingAccum >= PING_RATE)
@@ -731,50 +910,48 @@ event Tick(float dt)
             PingAccum = 0.0;
             PingSeq++;
             PingSentAt = Level.TimeSeconds;
-            Link.SendTo(PROTO $ "|PING|" $ PingSeq);
-        }
-
-        if (Level.TimeSeconds - LastRecvTime > HIDE_TIMEOUT)
-            HidePuppet();
-        if (Level.TimeSeconds - LastRecvTime > DROP_TIMEOUT)
-        {
-            // MEJORA (2026-08-27) - reconexion automatica de verdad.
-            //
-            // El cliente ya reintentaba solo, pero se quedaban restos de la
-            // sesion anterior: RemoteName con el nombre viejo y el aviso de
-            // version ya consumido, asi que un companero que volvia con otra
-            // build entraba sin avisar. Ademas HelloAccum seguia donde estaba
-            // y podia tardar hasta un segundo de mas en llamar.
-            //
-            // Al host no se le pide nada: no sabe a donde llamar. Es el cliente
-            // quien vuelve a picar a la puerta, y ahora lo hace de inmediato.
-            LogMsg("se perdio la conexion con " $ RemoteName);
-            bConnected = false;
-            RemoteName = "";
-            RemoteMap = "";
-            LastAnnouncedMap = "";
-            bWarnedBuild = false;
-            HidePuppet();
-
-            if (!bIsHost)
-            {
-                HelloAccum = HELLO_RATE;   // llamar ya, sin esperar el ciclo
-                LogMsg("reintentando conectar con " $ LastHost $ ":" $ LastPort $ "...");
-            }
-            else
-            {
-                LogMsg("esperando a que el companero vuelva a conectar...");
-            }
+            Link.SendTo(PROTO $ "|PING|" $ MySlot $ "|" $ PingSeq);
         }
     }
 
-    // Announce map changes so the peer can hide its puppet. Only once
-    // connected - otherwise LastAnnouncedMap is consumed while nobody is
-    // listening and the announce never happens again.
+    // Caducidad por slot. Antes habia un solo temporizador porque solo habia un
+    // companero; ahora cada uno cae por su cuenta y los demas siguen jugando.
+    for (i = 0; i < 4; i++)
+    {
+        if (i == MySlot || SlotActive[i] == 0)
+            continue;
+
+        if (Level.TimeSeconds - SlotLastRecv[i] > HIDE_TIMEOUT)
+            HidePuppet(i);
+
+        if (Level.TimeSeconds - SlotLastRecv[i] > DROP_TIMEOUT)
+        {
+            LogMsg("se perdio la conexion con " $ SlotName[i]);
+            ClearSlot(i);
+            if (bIsHost)
+                Link.FreeSlot(i);
+
+            if (!bIsHost && i == 0)
+            {
+                // Cayo el host: pedir plaza otra vez desde cero.
+                MySlot = -1;
+                bWarnedBuild = false;
+                HelloAccum = HELLO_RATE;
+                LogMsg("reintentando conectar con " $ LastHost $ ":" $ LastPort $ "...");
+            }
+        }
+    }
+    bConnected = (PeerCount() > 0);
+
+    // Sin slot no se manda estado: nadie sabria a quien atribuirlo.
+    if (MySlot < 0)
+        return;
+
+    // Anunciar el cambio de nivel para que los demas escondan su muneco.
     if (bConnected && MapName() != LastAnnouncedMap)
     {
         LastAnnouncedMap = MapName();
-        Link.SendTo(PROTO $ "|MAP|" $ LastAnnouncedMap);
+        Link.SendTo(PROTO $ "|MAP|" $ MySlot $ "|" $ LastAnnouncedMap);
     }
 
     SendAccum += dt;
@@ -782,7 +959,7 @@ event Tick(float dt)
         return;
     SendAccum = 0.0;
 
-    pkt = PROTO $ "|S|" $ MapName()
+    pkt = PROTO $ "|S|" $ MySlot $ "|" $ MapName()
         $ "|" $ int(Player.Location.X) $ "|" $ int(Player.Location.Y) $ "|" $ int(Player.Location.Z)
         $ "|" $ (Player.Rotation.Yaw & 65535) $ "|" $ Player.Rotation.Pitch
         $ "|" $ int(Player.Velocity.X) $ "|" $ int(Player.Velocity.Y) $ "|" $ int(Player.Velocity.Z)
@@ -797,7 +974,7 @@ event Tick(float dt)
 }
 
 // ---------------------------------------------------------------------------
-// Spells
+// Hechizos
 // ---------------------------------------------------------------------------
 
 function CheckLocalSpell()
@@ -814,28 +991,27 @@ function CheckLocalSpell()
     if (s == None || s == LastSentSpell)
         return;
 
-    // A new projectile actor exists that the local Harry just cast.
     LastSentSpell = s;
 
-    // BUG 5 (2026-08-27) - Wingardium Leviosa desincronizaba las dos partidas.
+    // BUG 5 (2026-08-27) - Wingardium Leviosa desincronizaba las partidas.
     //
     // Replicar el hechizo funciona porque un hechizo normal es un evento: sale,
-    // vuela, choca y explota, y la fisica del juego hace el resto igual en los
-    // dos mundos. Leviosa no es un evento, es una manipulacion SOSTENIDA: el
-    // hechizo lleva un baseSpell.target (el objeto que levita) y el jugador lo
-    // va moviendo con su punteria durante segundos.
+    // vuela, choca y explota, y la fisica del juego hace el resto igual en
+    // todos los mundos. Leviosa no es un evento, es una manipulacion SOSTENIDA:
+    // el hechizo lleva un baseSpell.target (el objeto que levita) y el jugador
+    // lo va moviendo con su punteria durante segundos.
     //
     // Nuestra copia nacia sin target, asi que SPELLPostLEV.Tick hacia
     //     rot = rotator(location - target.location)
     // contra None en cada fotograma - 6.081 avisos en una sola partida - y el
     // objeto acababa en un sitio distinto en cada mundo.
     //
-    // No se replica. El companero no vera levitar el objeto, pero cada mundo
-    // queda coherente consigo mismo, que es mucho mejor que dos mundos que
+    // No se replica. Los demas no veran levitar el objeto, pero cada mundo
+    // queda coherente consigo mismo, que es mucho mejor que mundos que
     // discrepan. Sincronizarlo de verdad pide otra cosa: transmitir la posicion
     // del objeto levitado mientras dura, identificandolo por nombre (los mapas
-    // son identicos en las dos partidas). Es viable, pero es un flujo continuo,
-    // no un evento, y merece su propio trabajo.
+    // son identicos en todas las partidas). Es viable, pero es un flujo
+    // continuo, no un evento, y merece su propio trabajo.
     if (IsSustainedSpell(string(s.Class)))
     {
         if (bShowDebug)
@@ -845,7 +1021,7 @@ function CheckLocalSpell()
 
     SpellSeq++;
 
-    SpellPkt = PROTO $ "|SP|" $ SpellSeq $ "|" $ string(s.Class)
+    SpellPkt = PROTO $ "|SP|" $ MySlot $ "|" $ SpellSeq $ "|" $ string(s.Class)
         $ "|" $ int(s.Location.X) $ "|" $ int(s.Location.Y) $ "|" $ int(s.Location.Z)
         $ "|" $ s.Rotation.Pitch $ "|" $ (s.Rotation.Yaw & 65535);
 
@@ -857,9 +1033,6 @@ function CheckLocalSpell()
         LogMsg("hechizo lanzado: " $ string(s.Class));
 }
 
-// Recreate the peer's projectile locally. Spawned unowned on purpose: it must
-// not be attributed to our Harry, and it must never feed back into
-// CheckLocalSpell (which only ever reads our own wand).
 // Un hechizo que necesita un objeto al que agarrarse no se puede recrear como
 // proyectil suelto: sin target hace destrozos. Ver BUG 5 en CheckLocalSpell.
 //
@@ -874,14 +1047,16 @@ function bool IsSustainedSpell(string clsName)
     return (InStr(c, "SPELLPOSTLEV") != -1 || InStr(c, "SPELLLEV") != -1);
 }
 
+// Recrea el proyectil del companero. Se crea sin dueno a proposito: no debe
+// atribuirse a nuestro Harry, y nunca debe realimentar CheckLocalSpell, que
+// solo lee nuestra propia varita.
 function ApplyRemoteSpell(string clsName, vector loc, rotator rot)
 {
     local class<baseSpell> c;
     local baseSpell s;
 
-    // Tambien se filtra al recibir: si el companero corre una build anterior
-    // seguira mandandolos, y no queremos que su version vieja nos rompa la
-    // partida a nosotros.
+    // Tambien se filtra al recibir: si alguien corre una build anterior seguira
+    // mandandolos, y no queremos que su version vieja nos rompa la partida.
     if (IsSustainedSpell(clsName))
         return;
 

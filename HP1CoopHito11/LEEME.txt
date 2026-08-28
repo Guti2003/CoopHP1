@@ -1,0 +1,54 @@
+HP1 CO-OP - Hito 11  -  HASTA 4 JUGADORES
+HP1Coop.u = 83970 bytes.  TODOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+IMPORTANTE: EL PROTOCOLO CAMBIO
+-------------------------------
+Esta version NO se entiende con las anteriores. Si alguien se queda en una
+version vieja no se conectara, pero al menos ahora sale un aviso claro
+diciendo por que, en vez de quedarse todo en silencio.
+
+COMO SE JUEGA ENTRE VARIOS
+--------------------------
+Uno hace de anfitrion y los demas se conectan a el:
+
+    El anfitrion:   CoopHost
+    Los demas:      CoopConnect <ip-del-anfitrion>
+
+Solo el anfitrion necesita abrir el puerto UDP 7777 si jugais por internet.
+Por VPN (Radmin, ZeroTier, Tailscale) no hay que abrir nada.
+
+Los clientes NO se conectan entre si: todo pasa por el anfitrion, que reenvia.
+Por eso si el anfitrion se cae, se cae la partida.
+
+Poneos nombre para distinguiros:   CoopName Migue
+
+CUANTOS CABEN
+-------------
+Cuatro contando al anfitrion. El limite se puede subir, pero conviene medirlo
+antes: el anfitrion reenvia el trafico de todos a todos, asi que el coste
+crece deprisa.
+
+QUE CAMBIA AL JUGAR
+-------------------
+  - Cada jugador tiene su propio muneco, su nombre y su vida en el HUD.
+  - Cada uno cae por su cuenta si pierde la conexion; los demas siguen.
+  - CoopStatus lista a todos, uno por linea.
+  - Al cambiar de nivel solo se sigue AL ANFITRION. Seguir a cualquiera seria
+    un tira y afloja entre gente que esta en niveles distintos.
+
+VIENE DE ANTES
+  - el companero anima al saltar y escalar
+  - no os perdeis al cambiar de nivel ni al morir
+  - Wingardium Leviosa no desincroniza las partidas
+  - CoopHost funciona despues de CoopDisconnect
+  - CoopConnect acepta puerto:  CoopConnect 25.26.239.149:7778
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopZ <n>                        CoopDebug
+  CoopDisconnect
+
+SIN PROBAR. Es una reescritura del nucleo del mod. Probad primero entre dos,
+que es lo que ya sabeis como se comporta, y solo despues meted a un tercero.
+Si algo va mal, la version de dos jugadores sigue en el repositorio.
