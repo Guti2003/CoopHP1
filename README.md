@@ -12,6 +12,17 @@ Creado por **Miguel Gutiérrez** ([@Guti2003](https://github.com/Guti2003)).
 
 ---
 
+## ⬇️ Descargar
+
+### **[▶ Descargar HP1Coop.rar](../../raw/main/dist/HP1Coop.rar)**
+
+Un solo archivo con todo lo necesario: el mod, el instalador y las
+instrucciones. Descomprímelo y ejecuta `Instalar.bat`.
+
+**Todos los que vayan a jugar juntos tienen que instalar este mismo archivo.**
+
+---
+
 ## Qué funciona
 
 | | |
@@ -42,7 +53,7 @@ separado).
 ## Instalación
 
 1. Abre el juego **al menos una vez** y ciérralo. Necesita crear su configuración.
-2. Descomprime y ejecuta `dist/HP1Coop/Instalar.bat`.
+2. Descomprime el `.rar` y ejecuta `Instalar.bat`.
 3. Si no encuentra el juego, te va a pedir la carpeta — la que contiene
    `System\` y `Maps\`.
 
@@ -157,9 +168,10 @@ lo arregla.
 ## Estructura
 
 ```
-src/Classes/     el código del mod (UnrealScript)
-dist/HP1Coop/    versión compilada lista para instalar
-docs/            arquitectura, decisiones de diseño e historial de fallas
+src/Classes/       el código del mod (UnrealScript)
+dist/HP1Coop.rar   lo que se descarga
+dist/HP1Coop/      su contenido, por si prefieres verlo suelto
+docs/              arquitectura, decisiones de diseño e historial de fallas
 ```
 
 Para compilar hace falta `UCC.exe` del toolkit de modding de HP1. El proceso y
