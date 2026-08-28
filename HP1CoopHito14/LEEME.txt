@@ -1,0 +1,44 @@
+HP1 CO-OP - Hito 14
+HP1Coop.u = 104297 bytes.  TODOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+ARREGLADO: LAS GRAGEAS SALIAN POR DUPLICADO
+-------------------------------------------
+Si en un nivel habia 4 grageas, acababais con 8: cada partida tiene sus
+propios objetos, asi que cada uno recogia sus 4 y ademas recibia las 4 del
+otro.
+
+Ahora, al coger una gragea, la gemela desaparece tambien en la partida de los
+demas. El nivel sigue teniendo 4 y todos acabais con 4.
+
+Se identifica el objeto por su nombre interno: los mapas son identicos en
+todas las partidas, asi que la gragea que aqui se llama "JellyBean17" alli se
+llama igual. Y para saber cual se ha cogido no hace falta enganchar nada: la
+gragea pasa al estado 'killbean' y la estrella a 'pickupstar' justo antes de
+desaparecer.
+
+Vale para grageas (normales y azules) y para estrellas.
+
+CAMBIO: LOS PUNTOS DE CASA YA NO SE COMPARTEN
+--------------------------------------------
+Y es a proposito. Los puntos no se recogen del suelo: se dan por hacer algo,
+como aprender un hechizo o ganar una practica. Como los dos haceis la leccion,
+los dos los ganais por vuestra cuenta. Compartirlos los duplicaria, y aqui no
+hay ningun objeto que destruir para evitarlo.
+
+O sea que los puntos ya salian bien solos. Compartirlos era el error.
+
+SE SIGUE COMPARTIENDO
+  - grageas y estrellas (ahora sin duplicar)
+  - cromos de mago (nunca se duplicaron: un cromo se tiene o no se tiene)
+
+NO SE COMPARTE
+  - ranas de chocolate: son salud, no coleccion
+  - puntos de casa: cada uno gana los suyos haciendo lo mismo
+
+Se puede apagar todo con:   CoopShare
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopShare                        CoopZ <n>
+  CoopDebug                        CoopDisconnect

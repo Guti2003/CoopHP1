@@ -35,12 +35,14 @@
 //   HPCOOP|2|MAP|slot|mapa
 //   HPCOOP|2|SP|slot|seq|clase|x|y|z|pitch|yaw   (se manda 3x, dedup por seq)
 //   HPCOOP|2|INV|slot|grageas|estrellas|puntos|mascaraCromos  (acumulados)
+//   HPCOOP|2|TOOK|slot|nombreDelActor           objeto recogido por alguien
 //   HPCOOP|2|BYE|slot
 //
-// Los hechizos (SP) ya estan. PICK (objetos) se descarto a proposito: a los
-// jugadores les gusta que cada uno tenga sus grageas y cromos. LTRIG resulto
-// innecesario - los secretos de Lumos se activan con un spellTrigger, que solo
-// reacciona a proyectiles baseSpell, y esos ya se replican.
+// Los hechizos (SP) ya estan. El inventario se comparte (INV + TOOK): si uno
+// recoge una gragea la tienen todos y el objeto desaparece de todos los mundos.
+// LTRIG resulto innecesario - los secretos de Lumos se activan con un
+// spellTrigger, que solo reacciona a proyectiles baseSpell, y esos ya se
+// replican.
 //================================================================================
 
 class CoopManager extends Actor
@@ -51,7 +53,7 @@ const PROTO = "HPCOOP|2";
 // Etiqueta de build. Viaja en HELLO/WELCOME para poder avisar cuando los dos
 // jugadores no tienen el mismo mod instalado. Subir esto en cada version que se
 // reparta.
-const BUILD = "13";
+const BUILD = "14";
 
 // Jugadores simultaneos, host incluido. Subirlo es cambiar esta constante y los
 // tamanos de los arrays (UE1 no acepta constantes como tamano de array). Antes
@@ -154,6 +156,10 @@ var int InvBaseBeans, InvBaseStars, InvBasePoints, InvBaseCards;
 var int InvRecvBeans, InvRecvStars, InvRecvPoints, InvRecvCards;
 // Lo que ya he aplicado de cada jugador, para no darlo dos veces.
 var int AppBeans[4], AppStars[4], AppPoints[4], AppCards[4];
+
+// Para detectar en que momento sube un contador y saber que objeto lo causo.
+var int LastBeans, LastStars;
+var bool bPickBaseSet;
 
 // Sincronizacion de hechizos. NO se engancha Harry.Cast() - eso obligaria a
 // inyectar codigo en el paquete del juego. baseWand ya apunta su ultimo disparo
@@ -697,6 +703,19 @@ function OnPacketFrom(string Text, int fromSlot)
 
         Relay(Text, fromSlot);
     }
+    // ------------------------------------------- OBJETO RECOGIDO POR OTRO
+    else if (parts[2] == "TOOK")
+    {
+        if (n < 5)
+            return;
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        if (bShareInventory)
+            ConsumeByName(parts[4]);
+        Relay(Text, fromSlot);
+    }
     // ----------------------------------------------------- INVENTARIO
     else if (parts[2] == "INV")
     {
@@ -886,6 +905,115 @@ function SetInventoryBaseline()
              $ InvBaseStars $ " estrellas, " $ InvBasePoints $ " puntos");
 }
 
+// ---------------------------------------------------------------------------
+// BUG 8 (2026-08-28) - las grageas salian por duplicado.
+//
+// Reportado: "si hay 4 grageas en realidad nos dan 8; yo cojo las 4 mias y el
+// coge las 4 que le aparecen a el".
+//
+// Y es exactamente lo que pasaba. Cada partida tiene su propio juego de
+// objetos. Al compartir solo la CUENTA, cada uno recogia sus 4 y ademas
+// recibia las 4 del otro. El objeto seguia ahi para los dos.
+//
+// La cuenta compartida esta bien; lo que faltaba es que al coger una gragea
+// desaparezca tambien la gemela del otro mundo. Asi el nivel sigue teniendo 4
+// grageas en total y los dos acabais con 4, que es lo que se pedia.
+//
+// Se identifica el objeto por su NOMBRE de actor. Los mapas son identicos en
+// las dos partidas, asi que la gragea que aqui se llama "JellyBean17" alli se
+// llama igual. No hace falta adivinar por posicion.
+//
+// Para saber CUAL se ha cogido no hace falta enganchar nada: la gragea pasa al
+// estado 'killbean' y la estrella a 'pickupstar' justo antes de desaparecer,
+// asi que en el momento en que sube el contador basta con mirar alrededor cual
+// esta en ese estado.
+// ---------------------------------------------------------------------------
+
+function bool IsConsumable(Actor a)
+{
+    // BlueJellyBean hereda de JellyBean, asi que IsA cubre las dos.
+    return (a.IsA('JellyBean') || a.IsA('Star'));
+}
+
+function CheckLocalPickup()
+{
+    local baseHarry h;
+    local Actor a, best;
+    local float bestD, d;
+    local bool bGained;
+
+    h = LocalHarry();
+    if (h == None)
+        return;
+
+    if (!bPickBaseSet)
+    {
+        LastBeans = h.numBeans;
+        LastStars = h.numStars;
+        bPickBaseSet = true;
+        return;
+    }
+
+    bGained = (h.numBeans > LastBeans) || (h.numStars > LastStars);
+    LastBeans = h.numBeans;
+    LastStars = h.numStars;
+
+    if (!bGained || !bConnected || MySlot < 0 || !bShareInventory)
+        return;
+
+    // El que se acaba de coger esta en su estado de recogida. Si por lo que sea
+    // no se encuentra asi, vale el mas cercano: entre grageas iguales da lo
+    // mismo cual se destruya, el total acaba siendo el mismo.
+    bestD = 1000000.0;
+    foreach RadiusActors(class'Actor', a, 400.0)
+    {
+        if (a == None || a.bDeleteMe || !IsConsumable(a))
+            continue;
+
+        if (a.GetStateName() == 'killbean' || a.GetStateName() == 'pickupstar')
+        {
+            best = a;
+            break;
+        }
+
+        d = VSize(a.Location - Player.Location);
+        if (d < bestD)
+        {
+            bestD = d;
+            best = a;
+        }
+    }
+
+    if (best == None)
+        return;
+
+    Link.SendTo(PROTO $ "|TOOK|" $ MySlot $ "|" $ string(best.Name));
+    if (bShowDebug)
+        LogMsg("cogido " $ string(best.Name) $ ", aviso a los demas");
+}
+
+// Quita el objeto que otro acaba de coger. No se da credito aqui: eso llega por
+// su cuenta en el paquete de inventario. Si se diera en los dos sitios se
+// volveria a duplicar, que es justo el bug que esto arregla.
+function ConsumeByName(string nm)
+{
+    local Actor a;
+
+    if (nm == "")
+        return;
+
+    foreach AllActors(class'Actor', a)
+    {
+        if (string(a.Name) == nm)
+        {
+            if (bShowDebug)
+                LogMsg("se llevaron " $ nm);
+            a.Destroy();
+            return;
+        }
+    }
+}
+
 function SendInventory()
 {
     local baseHarry h;
@@ -904,7 +1032,11 @@ function SendInventory()
     // Solo lo mio: lo que tengo menos lo que ya traia menos lo que me han dado.
     gb = h.numBeans - InvBaseBeans - InvRecvBeans;
     gs = h.numStars - InvBaseStars - InvRecvStars;
-    gp = h.getNumHousePointsHarry() - InvBasePoints - InvRecvPoints;
+    // Los puntos de casa NO se comparten. No se recogen del suelo: se dan por
+    // hacer algo - aprender un hechizo, ganar una practica - y como los dos
+    // haceis la leccion, los dos los ganais por vuestra cuenta. Compartirlos
+    // los duplicaria, y aqui no hay ningun objeto que destruir para evitarlo.
+    gp = 0;
     gc = CardMask(h) & ~InvBaseCards & ~InvRecvCards;
 
     // Si el juego resta algo por su cuenta no se manda en negativo: compartir
@@ -946,13 +1078,9 @@ function ApplyInventory(int s, int tb, int ts, int tp, int tc)
         h.AddStars(d);
     }
 
-    d = tp - AppPoints[s];
-    if (d > 0)
-    {
-        AppPoints[s] = tp;
-        InvRecvPoints += d;
-        h.AddHousePoints(d);
-    }
+    // Los puntos llegan siempre a 0 (ver SendInventory). Se ignora el campo,
+    // que se mantiene para no cambiar el formato del paquete.
+    AppPoints[s] = tp;
 
     newc = tc & ~AppCards[s];
     if (newc != 0)
@@ -1238,6 +1366,11 @@ event Tick(float dt)
 
     if (bConnected)
         CheckLocalSpell();
+
+    // Esto si va a cada envio: hay que pillar el objeto en su estado de
+    // recogida, y ese estado dura una fraccion de segundo antes de que el
+    // actor se destruya. Comparar dos enteros es barato.
+    CheckLocalPickup();
 
     // El inventario no necesita ir a 20 Hz: recoger una gragea no es urgente y
     // los totales acumulados aguantan de sobra medio segundo de retraso.
