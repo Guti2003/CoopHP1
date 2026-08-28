@@ -145,7 +145,7 @@ function CoopManager GetCoop()
 
     Coop = Viewport.Actor.Spawn(class'CoopManager');
     if (Coop == None)
-        log("[HP1Coop] CoopConsole failed to spawn CoopManager");
+        log("[HP1Coop] CoopConsole no pudo crear el CoopManager");
     return Coop;
 }
 
@@ -156,7 +156,7 @@ function bool Ready()
     if (GetCoop() != None)
         return true;
     // Engine.Console: event Message(PlayerReplicationInfo PRI, coerce string Msg, name N)
-    Message(None, "[HP1Coop] not ready yet - load a level first", 'Console');
+    Message(None, "[HP1Coop] aun no esta listo - carga una partida primero", 'Console');
     return false;
 }
 

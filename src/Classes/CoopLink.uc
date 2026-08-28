@@ -60,11 +60,11 @@ function bool StartHost(int port)
     bound = BindPort(port, false);
     if (bound == 0)
     {
-        mgr.LogMsg("failed to bind UDP port "$port);
+        mgr.LogMsg("no se pudo abrir el puerto UDP "$port);
         return false;
     }
     BoundPort = bound;
-    mgr.LogMsg("hosting on UDP port "$bound$", waiting for players...");
+    mgr.LogMsg("hospedando en el puerto UDP "$bound$", esperando jugadores...");
     return true;
 }
 
@@ -74,7 +74,7 @@ function bool StartClient(string ip, int port)
 
     if (!StringToIpAddr(ip, RemoteAddr))
     {
-        mgr.LogMsg("bad IP address: "$ip$" (use numeric form, e.g. 192.168.1.5)");
+        mgr.LogMsg("direccion IP invalida: "$ip$" (usa la forma numerica, por ejemplo 192.168.1.5)");
         return false;
     }
     RemoteAddr.Port = port;
@@ -83,11 +83,11 @@ function bool StartClient(string ip, int port)
     bound = BindPort(0, true);
     if (bound == 0)
     {
-        mgr.LogMsg("failed to bind a local UDP port");
+        mgr.LogMsg("no se pudo abrir un puerto UDP local");
         return false;
     }
     BoundPort = bound;
-    mgr.LogMsg("connecting to "$ip$":"$port$" (local port "$bound$")...");
+    mgr.LogMsg("conectando a "$ip$":"$port$" (puerto local "$bound$")...");
     return true;
 }
 

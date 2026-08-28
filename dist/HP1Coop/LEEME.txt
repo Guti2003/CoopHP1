@@ -1,44 +1,198 @@
-HP1 CO-OP - Hito 14
-HP1Coop.u = 104297 bytes.  TODOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+===============================================================================
+  HP1 CO-OP  -  cooperativo online para
+  Harry Potter y la Piedra Filosofal (PC, 2001)
 
-ARREGLADO: LAS GRAGEAS SALIAN POR DUPLICADO
--------------------------------------------
-Si en un nivel habia 4 grageas, acababais con 8: cada partida tiene sus
-propios objetos, asi que cada uno recogia sus 4 y ademas recibia las 4 del
-otro.
+  Por Miguel Gutierrez (@Guti2003)
+===============================================================================
 
-Ahora, al coger una gragea, la gemela desaparece tambien en la partida de los
-demas. El nivel sigue teniendo 4 y todos acabais con 4.
+Hasta cuatro personas recorren Hogwarts al mismo tiempo. Se ven moverse, se
+siguen entre niveles, los hechizos existen de verdad en todas las partidas y
+lo que recogen se comparte.
 
-Se identifica el objeto por su nombre interno: los mapas son identicos en
-todas las partidas, asi que la gragea que aqui se llama "JellyBean17" alli se
-llama igual. Y para saber cual se ha cogido no hace falta enganchar nada: la
-gragea pasa al estado 'killbean' y la estrella a 'pickupstar' justo antes de
-desaparecer.
+IMPORTANTE: esto NO incluye el juego. Necesitas tu propia copia instalada.
 
-Vale para grageas (normales y azules) y para estrellas.
+TODOS TIENEN QUE INSTALAR ESTE MISMO ARCHIVO (105402 bytes). Si las versiones no coinciden,
+el mod avisa al conectar.
 
-CAMBIO: LOS PUNTOS DE CASA YA NO SE COMPARTEN
---------------------------------------------
-Y es a proposito. Los puntos no se recogen del suelo: se dan por hacer algo,
-como aprender un hechizo o ganar una practica. Como los dos haceis la leccion,
-los dos los ganais por vuestra cuenta. Compartirlos los duplicaria, y aqui no
-hay ningun objeto que destruir para evitarlo.
 
-O sea que los puntos ya salian bien solos. Compartirlos era el error.
+QUE HACE FALTA
+--------------
+1. El juego instalado (edicion de PC del 2001).
+2. Haber abierto el juego al menos UNA VEZ antes de instalar el mod. El juego
+   crea su configuracion al arrancar y el instalador la necesita.
+3. Windows con PowerShell (viene de fabrica).
 
-SE SIGUE COMPARTIENDO
-  - grageas y estrellas (ahora sin duplicar)
-  - cromos de mago (nunca se duplicaron: un cromo se tiene o no se tiene)
 
-NO SE COMPARTE
-  - ranas de chocolate: son salud, no coleccion
-  - puntos de casa: cada uno gana los suyos haciendo lo mismo
+COMO INSTALAR
+-------------
+1. Descomprime esta carpeta donde quieras.
+2. Doble clic en  Instalar.bat
+3. Si no encuentra el juego solo, te pide la carpeta. Es la que contiene las
+   subcarpetas System\ y Maps\.
 
-Se puede apagar todo con:   CoopShare
+El instalador copia un archivo a System\, cambia UNA linea de configuracion y
+hace respaldo de todo lo que toca. No modifica ningun archivo original del
+juego. Para deshacerlo: Desinstalar.bat
 
-COMANDOS (consola con TAB, ya en partida)
-  CoopHost [puerto]                CoopConnect <ip>[:puerto]
-  CoopName <nombre>                CoopStatus
-  CoopShare                        CoopZ <n>
-  CoopDebug                        CoopDisconnect
+
+COMO CONECTARSE - USEN UNA VPN
+------------------------------
+Lo mas simple es una red privada virtual: los pone a todos en la misma red
+local y no hay que abrir puertos en el modem.
+
+RECOMENDADO: HAMACHI   ->   https://vpn.net/
+
+1. Que todos lo instalen y creen una cuenta.
+2. Uno crea una red:  Red -> Crear una red nueva,  con nombre y contrasena.
+3. Los demas entran con  Red -> Unirse a una red existente.
+4. Ya conectados, cada uno ve su IP de Hamachi arriba en la ventana. Empieza
+   por 25.  ESA es la IP que se usa en el juego, no la de internet.
+
+Sirven igual Radmin VPN, ZeroTier o Tailscale.
+
+Si prefieren jugar por internet directo, sin VPN, solo el anfitrion necesita
+abrir el puerto UDP 7777 en su modem.
+
+
+COMO JUGAR
+----------
+1. Abran el juego y CARGUEN UNA PARTIDA.
+
+2. Presionen TAB para abrir la consola.
+
+   Tiene que ser DENTRO DEL JUEGO, con la partida cargada. En el menu
+   principal no funciona: los comandos necesitan a Harry en el mapa.
+
+   La consola baja desde arriba. Se cierra con TAB otra vez.
+
+3. Pongan su nombre, una sola vez:
+
+       CoopName TuNombre
+
+4. Uno hace de anfitrion:
+
+       CoopHost
+
+5. Los demas se conectan a el:
+
+       CoopConnect 25.26.239.149
+
+   (con la IP de Hamachi del anfitrion, la que empieza por 25.)
+
+6. Si funciona, ven un mensaje de que alguien se unio a la partida, y el
+   companero aparece en el mapa.
+
+
+QUITAR EL MODO DEPURACION
+-------------------------
+El mod tiene que activar el modo depuracion del juego, porque la consola viene
+desactivada de fabrica y sin el no habria forma de escribir los comandos. El
+efecto secundario es que quedan a la vista textos que estorban.
+
+Ya que esten todos conectados, presionen F7 y desaparecen.
+
+OJO: F7 tambien apaga la consola. Es la misma llave para las dos cosas.
+Asi que CONECTENSE PRIMERO Y PRESIONEN F7 DESPUES.
+
+Si necesitas la consola de nuevo, escribe esto durante la partida, sin abrir
+nada, tal cual:
+
+       HARRYDEBUGMODEON
+
+Es un truco del propio juego. Devuelve el modo depuracion y con el la consola.
+
+
+COMANDOS
+--------
+  CoopHost [puerto]            hacer de anfitrion (7777 por defecto)
+  CoopConnect <ip>[:puerto]    conectarse (solo IP numerica)
+  CoopName <nombre>            tu nombre, se guarda solo
+  CoopStatus                   estado, jugadores conectados y ping
+  CoopShare                    activa o desactiva el inventario compartido
+  CoopZ <n>                    altura del muneco si flota o se hunde
+  CoopDebug                    informacion extra en el registro
+  CoopDisconnect               cortar la sesion
+
+Para un puerto distinto del 7777, peguenlo con dos puntos:
+  CoopConnect 25.26.239.149:7778
+
+
+QUE FUNCIONA Y QUE NO
+---------------------
+Funciona:
+  - hasta 4 jugadores
+  - verse moverse y animarse, 20 veces por segundo
+  - seguir al anfitrion cuando cambia de mapa
+  - HECHIZOS: el proyectil existe de verdad en todas las partidas. Vuela,
+    choca y explota. No es un adorno: afecta al mundo de todos.
+  - Por eso los calderos, las placas y los secretos de Lumos funcionan solos.
+  - INVENTARIO: si uno recoge una gragea, la tienen todos, y el objeto
+    desaparece del mundo de los demas para que no se duplique. Vale para
+    grageas, estrellas y cromos de mago.
+
+No se comparte a proposito:
+  - las ranas de chocolate: son salud, no coleccion
+  - los puntos de casa: se ganan por hacer algo, y como todos hacen lo mismo
+    ya los ganan por separado
+
+Todavia NO:
+  - enemigos
+  - cinematicas
+  - el progreso de la partida guardada
+
+
+SI ALGO FALLA
+-------------
+El registro esta en  Documentos\Harry Potter\HP.log  y todas las lineas del
+mod empiezan por [HP1Coop]. Con CoopDebug activado sale bastante mas.
+
+- "No conecta": revisa en este orden
+    1. que el anfitrion haya escrito CoopHost YA ESTANDO EN PARTIDA
+    2. que el anfitrion vea "hospedando en el puerto UDP 7777"
+    3. que todos tengan el mismo archivo
+    4. que esten usando la IP de la VPN, no la de internet
+  Si nadie contesta, el mod avisa solo a los diez intentos.
+
+- "No pasa nada al escribir CoopHost": el mod no cargo. Revisa que exista
+  System\HP1Coop.u y que Documentos\Harry Potter\HP.ini tenga la linea
+  Console=HP1Coop.CoopConsole
+
+- "Nos conectamos pero no nos vemos": revisen que esten en el MISMO nivel.
+  Usen CoopStatus para ver si llegan paquetes.
+
+
+EL JUEGO NO ABRE (aunque no hayas instalado el mod)
+---------------------------------------------------
+Si al abrir el juego sale un error de entrada, NO es culpa del mod y NO hay
+que reinstalar el juego. El juego del 2001 usa el renderizador por software a
+pantalla completa, y Windows 10/11 ya no lo permite.
+
+Arreglo: abre este archivo con el Bloc de notas
+
+    Documentos\Harry Potter\HP.ini
+
+busca las lineas que dicen
+
+    StartupFullscreen=True
+
+(hay dos) y cambialas por
+
+    StartupFullscreen=False
+
+Guarda y vuelve a abrir el juego. Va a arrancar en ventana.
+
+Ese archivo esta FUERA de la carpeta del juego, asi que reinstalar el juego no
+lo arregla: la configuracion se queda igual.
+
+
+LICENCIA
+--------
+Copyright (c) 2026 Miguel Gutierrez (@Guti2003). Todos los derechos reservados.
+
+Puedes descargarlo, usarlo, jugarlo y modificarlo para ti. No puedes publicar
+copias ni versiones modificadas, ni venderlo. Si quieres hacer algo de eso,
+pidelo: la respuesta puede ser que si.
+
+Portado desde hp2-coop-multiplayer (jenyaalexanov, licencia MIT), que hace lo
+mismo para La Camara Secreta. Herramientas de modding de HP1: metallicafan212
+y Han / OldUnreal.

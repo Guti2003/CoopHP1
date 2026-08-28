@@ -2,9 +2,9 @@
 
 **Modo cooperativo online para *Harry Potter y la Piedra Filosofal* (PC, 2001).**
 
-Hasta cuatro personas recorren Hogwarts a la vez. Os veis moveros y animaros,
-os seguís entre niveles, los hechizos que lanza uno existen de verdad en la
-partida de los demás, y lo que recogéis se comparte.
+Hasta cuatro personas recorren Hogwarts al mismo tiempo. Se ven moverse y
+animarse, se siguen entre niveles, los hechizos que lanza uno existen de verdad
+en la partida de los demás, y lo que recogen se comparte.
 
 Creado por **Miguel Gutiérrez** ([@Guti2003](https://github.com/Guti2003)).
 
@@ -30,12 +30,12 @@ los secretos de Lumos funcionan solos — todos ellos se activan con un hechizo,
 el hechizo está de verdad en los dos mundos.
 
 **Lo que se comparte:** grageas, estrellas y cromos de mago. Si uno recoge una
-gragea la tenéis todos, y el objeto desaparece del mundo de los demás para que
+gragea la tienen todos, y el objeto desaparece del mundo de los demás para que
 no se duplique.
 
 **Lo que no:** las ranas de chocolate (son salud, no colección) y los puntos de
-casa (se ganan por hacer algo, y todos hacéis lo mismo, así que ya los ganáis
-por separado).
+casa (se ganan por hacer algo, y todos hacen lo mismo, así que ya los ganan por
+separado).
 
 ---
 
@@ -43,29 +43,54 @@ por separado).
 
 1. Abre el juego **al menos una vez** y ciérralo. Necesita crear su configuración.
 2. Descomprime y ejecuta `dist/HP1Coop/Instalar.bat`.
-3. Si no encuentra el juego, te pedirá la carpeta — la que contiene `System\` y `Maps\`.
+3. Si no encuentra el juego, te va a pedir la carpeta — la que contiene
+   `System\` y `Maps\`.
 
 El instalador copia un archivo a `System\` y cambia una línea de configuración,
-con copia de seguridad de todo lo que toca. No modifica ningún archivo original
-del juego. Para deshacerlo, `Desinstalar.bat`.
+con respaldo de todo lo que toca. No modifica ningún archivo original del juego.
+Para deshacerlo, `Desinstalar.bat`.
 
-**Todos los jugadores deben instalar exactamente el mismo archivo.** Si las
-versiones no coinciden, el mod os avisa al conectar.
+**Todos los jugadores tienen que instalar exactamente el mismo archivo.** Si las
+versiones no coinciden, el mod avisa al conectar.
+
+---
+
+## Cómo conectarse
+
+Lo más simple es una **red privada virtual (VPN)**: los pone a todos en la misma
+red local y no hay que abrir puertos en el módem.
+
+**Recomendado: [Hamachi](https://vpn.net/)** (LogMeIn Hamachi).
+
+1. Que todos lo instalen y creen una cuenta.
+2. Uno crea una red: *Red → Crear una red nueva*, con un nombre y contraseña.
+3. Los demás entran con *Red → Unirse a una red existente*.
+4. Cuando estén conectados, cada uno ve su IP de Hamachi arriba en la ventana
+   (empieza por `25.`). **Esa es la IP que hay que usar en el juego**, no la de
+   internet.
+
+Sirven igual **Radmin VPN**, **ZeroTier** o **Tailscale**. Con cualquiera de
+ellas no hay que configurar nada más.
+
+Si prefieren jugar por internet directo, sin VPN, solo el anfitrión necesita
+abrir el puerto **UDP 7777** en su módem.
 
 ---
 
 ## Cómo jugar
 
-Abrid el juego, **cargad una partida**, y pulsad **TAB** para la consola. Los
-comandos no funcionan en el menú principal: necesitan a Harry en el mapa.
+Abran el juego, **carguen una partida**, y presionen **TAB** para la consola.
+Los comandos no funcionan en el menú principal: necesitan a Harry en el mapa.
 
 ```
 El anfitrión:   CoopHost
 Los demás:      CoopConnect <ip-del-anfitrión>
 ```
 
-Solo el anfitrión necesita abrir el puerto **UDP 7777** si jugáis por internet.
-Con una VPN (Radmin, ZeroTier, Tailscale) no hay que abrir nada.
+Con Hamachi, la IP del anfitrión es la que empieza por `25.` — por ejemplo
+`CoopConnect 25.26.239.149`.
+
+Pónganse nombre para distinguirse: `CoopName TuNombre`. Se guarda solo.
 
 ### Comandos
 
@@ -77,12 +102,37 @@ Con una VPN (Radmin, ZeroTier, Tailscale) no hay que abrir nada.
 | `CoopStatus` | Estado, jugadores conectados y ping |
 | `CoopShare` | Activa o desactiva el inventario compartido |
 | `CoopZ <n>` | Altura del muñeco, si flota o se hunde |
-| `CoopDebug` | Información extra en el log |
+| `CoopDebug` | Información extra en el registro |
 | `CoopDisconnect` | Cortar la sesión |
 
-Para poner un puerto distinto del 7777, **pégalo con dos puntos**:
+Para usar un puerto distinto del 7777, **péguenlo con dos puntos**:
 `CoopConnect 25.26.239.149:7778`. La consola de UE1 reparte mal los argumentos
 cuando hay un texto seguido de un número.
+
+---
+
+## Quitar el modo depuración
+
+El mod tiene que activar el modo depuración del juego, porque **la consola viene
+desactivada de fábrica** y sin él no habría forma de escribir los comandos. El
+efecto secundario es que quedan a la vista textos de depuración que estorban.
+
+Una vez que estén todos conectados, presiona **F7** y desaparecen.
+
+**Ojo con esto:** F7 también apaga la consola. Es la misma llave para las dos
+cosas — el juego revisa el modo depuración antes de abrirla. Así que:
+
+> **Conéctense primero, y presionen F7 después.**
+
+Si necesitas la consola de nuevo, escribe esto **durante la partida**, sin abrir
+nada, tal cual:
+
+```
+HARRYDEBUGMODEON
+```
+
+Es un truco del propio juego. Vuelve a activar el modo depuración, y con él la
+consola y los comandos del mod.
 
 ---
 
@@ -91,12 +141,12 @@ cuando hay un texto seguido de un número.
 El registro está en `Documentos\Harry Potter\HP.log`, y todas las líneas del mod
 empiezan por `[HP1Coop]`. Con `CoopDebug` activado sale bastante más.
 
-**No conecta.** Comprueba, en este orden: que el anfitrión haya escrito
-`CoopHost` ya en partida; que vea `hospedando en el puerto UDP 7777`; que todos
-tengáis el mismo archivo. Si nadie contesta, el mod te avisa a los diez
-intentos.
+**No conecta.** Revisa, en este orden: que el anfitrión haya escrito `CoopHost`
+ya estando en partida; que vea `hospedando en el puerto UDP 7777`; que todos
+tengan el mismo archivo; y que estén usando la IP de la VPN, no la de internet.
+Si nadie contesta, el mod avisa a los diez intentos.
 
-**El juego no arranca**, incluso sin el mod. El renderizador por software a
+**El juego no abre**, incluso sin el mod. El renderizador por software a
 pantalla completa ya no funciona en Windows 10/11. En
 `Documentos\Harry Potter\HP.ini`, cambia las dos líneas `StartupFullscreen=True`
 a `False`. Ese archivo está fuera de la carpeta del juego, así que reinstalar no
@@ -109,7 +159,7 @@ lo arregla.
 ```
 src/Classes/     el código del mod (UnrealScript)
 dist/HP1Coop/    versión compilada lista para instalar
-docs/            arquitectura, decisiones de diseño e historial de bugs
+docs/            arquitectura, decisiones de diseño e historial de fallas
 ```
 
 Para compilar hace falta `UCC.exe` del toolkit de modding de HP1. El proceso y
@@ -122,14 +172,14 @@ sus dos trampas están en [docs/arquitectura.md](docs/arquitectura.md).
 El mod **no modifica ningún archivo del juego**. Se engancha por la clave
 `Console=` de la configuración, y desde ahí monta todo lo demás.
 
-La idea que lo hizo posible: **antes de asumir que hay que interceptar una
-llamada, mirar si el juego ya guarda ese dato en algún sitio accesible.** Se
-daba por hecho que sincronizar hechizos exigía inyectar código en el paquete del
-juego. No hacía falta: la varita ya apuntaba su último disparo. Lo mismo pasó
-con el nombre real del nivel y con los contadores de objetos.
+La idea que lo hizo posible: **antes de dar por hecho que hay que interceptar
+una llamada, revisar si el juego ya guarda ese dato en algún lugar accesible.**
+Se asumía que sincronizar hechizos exigía inyectar código en el paquete del
+juego. No hacía falta: la varita ya anotaba su último disparo. Lo mismo pasó con
+el nombre real del nivel y con los contadores de objetos.
 
-Los detalles están en [docs/arquitectura.md](docs/arquitectura.md), y los ocho
-bugs que aparecieron jugando —con su causa y su arreglo— en
+Los detalles están en [docs/arquitectura.md](docs/arquitectura.md), y las ocho
+fallas que aparecieron jugando —con su causa y su arreglo— en
 [docs/historial-de-bugs.md](docs/historial-de-bugs.md).
 
 ---
@@ -157,8 +207,8 @@ de jenyaalexanov, que hace lo mismo para *La Cámara Secreta* y se publicó bajo
 licencia MIT. Las restricciones de arriba cubren el trabajo propio; las partes
 heredadas siguen siendo MIT para quien las obtenga del proyecto original.
 
-El compilador y las fuentes de UnrealScript de HP1 provienen del archivo de
+El compilador y las fuentes de UnrealScript de HP1 vienen del archivo de
 preservación de [OldUnreal](https://www.oldunreal.com/) y del trabajo de
 recopilación de metallicafan212 y Han.
 
-El juego no está incluido y este repositorio no concede ningún derecho sobre él.
+El juego no está incluido y este repositorio no otorga ningún derecho sobre él.

@@ -47,7 +47,7 @@ puerto pedido, se reutiliza.
 
 ## BUG 3 — Los jugadores se perdían al cambiar de nivel
 
-**Síntoma:** se veían bien, y dejaban de verse en cuanto uno cruzaba una puerta.
+**Síntoma:** se veían bien y dejaban de verse en cuanto uno cruzaba una puerta.
 
 **Causa:** la identidad del nivel salía de `Level.Outer.Name`. Y en HP1 **una
 partida guardada es un mapa**: cargar ejecuta literalmente `open save0.usa`. Los
@@ -85,7 +85,7 @@ sin aplicar al muñeco.
 
 ## BUG 5 — Wingardium Leviosa desincronizaba las partidas
 
-**Síntoma:** los objetos acababan en sitios distintos en cada mundo. En el
+**Síntoma:** los objetos terminaban en lugares distintos en cada mundo. En el
 registro, **6.081 avisos** en una sola partida:
 
 ```
@@ -150,8 +150,8 @@ Lo ya perdido no se recuperó.
 
 ## BUG 8 — Las grageas salían por duplicado
 
-**Síntoma:** *"si hay 4 grageas en realidad nos dan 8; yo cojo las 4 mías y él
-coge las 4 que le aparecen a él"*.
+**Síntoma:** *"si hay 4 grageas en realidad nos dan 8; yo recojo las 4 mías y él
+recoge las 4 que le aparecen a él"*.
 
 **Causa:** cada partida tiene su propio juego de objetos. Compartiendo solo la
 *cuenta*, cada uno recogía sus 4 y además recibía las 4 del otro.

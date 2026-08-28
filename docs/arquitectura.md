@@ -8,7 +8,7 @@ Notas técnicas de HP1 Co-op. Para instalar y jugar, ver el
 ## La idea que sostiene todo el mod
 
 > **Antes de asumir que hay que interceptar una llamada del juego, mirar si el
-> juego ya guarda ese dato en algún sitio accesible.**
+> juego ya guarda ese dato en algún lugar accesible.**
 
 Esto no es una frase bonita: es lo que hizo viable el proyecto, y se ha repetido
 cuatro veces.
@@ -46,7 +46,7 @@ Una versión anterior creaba el manager desde
 `[Engine.GameEngine] ServerActors=HP1Coop.CoopManager`. **Se probó y no
 funciona:** UE1 solo instancia los `ServerActors` cuando el motor arranca como
 servidor, y HP1 en un jugador es `NM_Standalone`. Bajo `UCC server` sí
-funcionaba, que es lo que hacía el fallo tan confuso.
+funcionaba, que es lo que hacía la falla tan confusa.
 
 Enganchar por `Console=` sí sirve: la consola se instancia en todos los niveles
 y en todos los modos, y el ini del juego ya la redirige.
@@ -161,7 +161,7 @@ El `.u` sale directamente en `System\`, o sea que compilar ya instala.
 
 ## El instalador — lecciones aprendidas
 
-1. **Importan dos ficheros ini**, y esto se aprendió por las malas:
+1. **Importan dos archivos ini**, y esto se aprendió por las malas:
    - `<Juego>\System\Default.ini` — la semilla
    - `Documentos\Harry Potter\HP.ini` — **el que el juego realmente lee**
 
@@ -173,7 +173,7 @@ El `.u` sale directamente en `System\`, o sea que compilar ya instala.
    Además fuerza `bDebugMode` y `ConsoleKey=9` (TAB), porque la consola viene
    desactivada de fábrica.
 
-4. Comprueba que `System\HarryPotter.u` mida **13.972.287 bytes**, la edición
+4. Revisa que `System\HarryPotter.u` mida **13.972.287 bytes**, la edición
    contra la que se compiló.
 
 5. Hace copia de seguridad de todo lo que toca y no modifica ningún archivo
@@ -190,6 +190,6 @@ modelo de simulación, no detectar un evento. El coop de HP2 tampoco lo tiene.
 **Progreso de partida compartido.** Cada uno mantiene su propio guardado.
 
 Dicho de otro modo: esto no es *Hogwarts cooperativo completo*, y no lo será.
-Es recorrer el castillo juntos, viéndoos, lanzando hechizos que afectan a los
-dos mundos y compartiendo lo que encontráis — que resultó ser bastante más de lo
+Es recorrer el castillo juntos, viéndose, lanzando hechizos que afectan a los
+dos mundos y compartiendo lo que encuentran — que resultó ser bastante más de lo
 que el plan original daba por posible.

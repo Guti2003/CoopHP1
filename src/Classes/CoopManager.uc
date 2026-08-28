@@ -56,7 +56,7 @@ const PROTO = "HPCOOP|2";
 // Etiqueta de build. Viaja en HELLO/WELCOME para poder avisar cuando los dos
 // jugadores no tienen el mismo mod instalado. Subir esto en cada version que se
 // reparta.
-const BUILD = "14";
+const BUILD = "15";
 
 // Jugadores simultaneos, host incluido. Subirlo es cambiar esta constante y los
 // tamanos de los arrays (UE1 no acepta constantes como tamano de array). Antes
@@ -141,7 +141,7 @@ var string LastAnnouncedMap;
 //
 // LA TRAMPA DEL BUCLE: al recibir una gragea la sumo a mi cuenta, y entonces mi
 // cuenta sube... y si no llevara aparte lo que me han regalado, la reenviaria
-// como si la hubiera cogido yo. Y el otro me la devolveria. Por eso hay dos
+// como si la hubiera recogido yo. Y el otro me la devolveria. Por eso hay dos
 // contadores: lo que habia al empezar (base) y lo que me han dado (recv). Lo
 // que anuncio es siempre  actual - base - recibido, o sea solo lo mio.
 // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ event PostBeginPlay()
         SaveConfig();
     }
     MySlot = -1;
-    log("[HP1Coop] manager up on " $ MapName());
+    log("[HP1Coop] gestor iniciado en " $ MapName());
     Enable('Tick');
 }
 
@@ -374,7 +374,7 @@ function ConnectTo(string ip, optional int port)
 
 // Parte del ARREGLO BUG 2: al desconectar se conserva el socket. Antes se
 // destruia, y como UE1 no lo cierra hasta la recogida de basura, el siguiente
-// CoopHost no podia volver a coger el puerto.
+// CoopHost no podia volver a tomar el puerto.
 function DisconnectNow()
 {
     if (Link != None)
@@ -543,7 +543,7 @@ function OnPacketFrom(string Text, int fromSlot)
             bWarnedBuild = true;
             LogMsg("AVISO: alguien usa una version incompatible del mod"
                  $ " (protocolo " $ parts[1] $ ", el nuestro es "
-                 $ Mid(PROTO, 7) $ "). Instalad todos el mismo HP1Coop.u.");
+                 $ Mid(PROTO, 7) $ "). Instalen todos el mismo HP1Coop.u.");
         }
         return;
     }
@@ -830,7 +830,7 @@ function DropSlotByName(string nm, int exceptSlot)
 // Aviso de versiones distintas.
 //
 // Antes, si dos jugadores tenian builds distintas, se conectaban igual y luego
-// pasaban cosas raras sin ningun mensaje: os veiais a medias, o no os veiais, o
+// pasaban cosas raras sin ningun mensaje: se veian a medias, o no se veian, o
 // un arreglo estaba en un lado y no en el otro. Era de los fallos mas dificiles
 // de diagnosticar porque no parecia un fallo.
 //
@@ -846,7 +846,7 @@ function CheckPeerBuild(int n, string peerBuild, string who)
     {
         bWarnedBuild = true;
         LogMsg("AVISO: " $ who $ " usa una version anterior del mod."
-             $ " Instalad todos el mismo HP1Coop.u.");
+             $ " Instalen todos el mismo HP1Coop.u.");
         return;
     }
 
@@ -855,7 +855,7 @@ function CheckPeerBuild(int n, string peerBuild, string who)
         bWarnedBuild = true;
         LogMsg("AVISO: versiones distintas - la tuya es la " $ BUILD
              $ " y la de " $ who $ " la " $ peerBuild
-             $ ". Instalad todos el mismo HP1Coop.u.");
+             $ ". Instalen todos el mismo HP1Coop.u.");
     }
 }
 
@@ -911,22 +911,22 @@ function SetInventoryBaseline()
 // ---------------------------------------------------------------------------
 // BUG 8 (2026-08-28) - las grageas salian por duplicado.
 //
-// Reportado: "si hay 4 grageas en realidad nos dan 8; yo cojo las 4 mias y el
-// coge las 4 que le aparecen a el".
+// Reportado: "si hay 4 grageas en realidad nos dan 8; yo recojo las 4 mias y el
+// recoge las 4 que le aparecen a el".
 //
 // Y es exactamente lo que pasaba. Cada partida tiene su propio juego de
 // objetos. Al compartir solo la CUENTA, cada uno recogia sus 4 y ademas
 // recibia las 4 del otro. El objeto seguia ahi para los dos.
 //
-// La cuenta compartida esta bien; lo que faltaba es que al coger una gragea
+// La cuenta compartida esta bien; lo que faltaba es que al recoger una gragea
 // desaparezca tambien la gemela del otro mundo. Asi el nivel sigue teniendo 4
-// grageas en total y los dos acabais con 4, que es lo que se pedia.
+// grageas en total y los dos terminan con 4, que es lo que se pedia.
 //
 // Se identifica el objeto por su NOMBRE de actor. Los mapas son identicos en
 // las dos partidas, asi que la gragea que aqui se llama "JellyBean17" alli se
 // llama igual. No hace falta adivinar por posicion.
 //
-// Para saber CUAL se ha cogido no hace falta enganchar nada: la gragea pasa al
+// Para saber CUAL se recogio no hace falta enganchar nada: la gragea pasa al
 // estado 'killbean' y la estrella a 'pickupstar' justo antes de desaparecer,
 // asi que en el momento en que sube el contador basta con mirar alrededor cual
 // esta en ese estado.
@@ -992,7 +992,7 @@ function CheckLocalPickup()
 
     Link.SendTo(PROTO $ "|TOOK|" $ MySlot $ "|" $ string(best.Name));
     if (bShowDebug)
-        LogMsg("cogido " $ string(best.Name) $ ", aviso a los demas");
+        LogMsg("recogido " $ string(best.Name) $ ", aviso a los demas");
 }
 
 // Quita el objeto que otro acaba de coger. No se da credito aqui: eso llega por
@@ -1134,7 +1134,7 @@ function UpdatePuppet(int slot)
         Puppets[slot] = Spawn(class'CoopPuppet');
         if (Puppets[slot] == None)
         {
-            log("[HP1Coop] failed to spawn puppet for slot " $ slot);
+            log("[HP1Coop] no se pudo crear el muneco del slot " $ slot);
             return;
         }
         if (bShowDebug)
@@ -1291,7 +1291,7 @@ event Tick(float dt)
                 bNoAnswerWarned = true;
                 LogMsg("llevo " $ HelloTries $ " intentos con " $ LastHost
                      $ ":" $ LastPort $ " y no contesta nadie.");
-                LogMsg("comprueba: que el anfitrion haya escrito CoopHost YA EN"
+                LogMsg("revisa: que el anfitrion haya escrito CoopHost YA EN"
                      $ " PARTIDA, y que tenga esta misma version del mod"
                      $ " (build " $ BUILD $ ").");
             }
