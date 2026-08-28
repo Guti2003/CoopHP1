@@ -14,12 +14,17 @@ Creado por **Miguel Gutiérrez** ([@Guti2003](https://github.com/Guti2003)).
 
 ## ⬇️ Descargar
 
-### **[▶ Descargar HP1Coop.rar](../../raw/main/dist/HP1Coop.rar)**
+### **[▶ Descargar HP1Coop.zip](../../raw/main/dist/HP1Coop.zip)**
 
 Un solo archivo con todo lo necesario: el mod, el instalador y las
 instrucciones. Descomprímelo y ejecuta `Instalar.bat`.
 
 **Todos los que vayan a jugar juntos tienen que instalar este mismo archivo.**
+
+<sub>Si tu antivirus dice algo, es un falso positivo por el instalador: es un script
+de PowerShell que copia un archivo y cambia una línea de configuración, y ese
+patrón se parece al de un instalador malicioso. El código está a la vista en
+[`dist/HP1Coop/installer/`](dist/HP1Coop/installer/) — son 120 líneas legibles.</sub>
 
 ---
 
@@ -53,7 +58,7 @@ separado).
 ## Instalación
 
 1. Abre el juego **al menos una vez** y ciérralo. Necesita crear su configuración.
-2. Descomprime el `.rar` y ejecuta `Instalar.bat`.
+2. Descomprime el `.zip` y ejecuta `Instalar.bat`.
 3. Si no encuentra el juego, te va a pedir la carpeta — la que contiene
    `System\` y `Maps\`.
 
@@ -169,7 +174,7 @@ lo arregla.
 
 ```
 src/Classes/       el código del mod (UnrealScript)
-dist/HP1Coop.rar   lo que se descarga
+dist/HP1Coop.zip   lo que se descarga
 dist/HP1Coop/      su contenido, por si prefieres verlo suelto
 docs/              arquitectura, decisiones de diseño e historial de fallas
 ```
