@@ -247,6 +247,15 @@ exec function CoopName(string nombre)
         Coop.SetPlayerName(nombre);
 }
 
+// Compartir inventario es cuestion de gusto, asi que se puede apagar. Cada uno
+// decide por su cuenta: apagarlo significa que TU no repartes lo que recoges,
+// pero sigues recibiendo lo que reparten los demas.
+exec function CoopShare()
+{
+    if (Ready())
+        Coop.ToggleShare();
+}
+
 exec function CoopDebug()
 {
     if (Ready())

@@ -34,6 +34,7 @@
 //   HPCOOP|2|S|slot|mapa|x|y|z|yaw|pitch|vx|vy|vz|anim|rate|hp
 //   HPCOOP|2|MAP|slot|mapa
 //   HPCOOP|2|SP|slot|seq|clase|x|y|z|pitch|yaw   (se manda 3x, dedup por seq)
+//   HPCOOP|2|INV|slot|grageas|estrellas|puntos|mascaraCromos  (acumulados)
 //   HPCOOP|2|BYE|slot
 //
 // Los hechizos (SP) ya estan. PICK (objetos) se descarto a proposito: a los
@@ -50,7 +51,7 @@ const PROTO = "HPCOOP|2";
 // Etiqueta de build. Viaja en HELLO/WELCOME para poder avisar cuando los dos
 // jugadores no tienen el mismo mod instalado. Subir esto en cada version que se
 // reparta.
-const BUILD = "12";
+const BUILD = "13";
 
 // Jugadores simultaneos, host incluido. Subirlo es cambiar esta constante y los
 // tamanos de los arrays (UE1 no acepta constantes como tamano de array). Antes
@@ -116,6 +117,44 @@ var CoopPuppet Puppets[4];
 
 var string LastAnnouncedMap;
 
+// ---------------------------------------------------------------------------
+// INVENTARIO COMPARTIDO
+//
+// Si uno recoge una gragea, la tienen los dos. No se le quita a nadie: se
+// duplica. Las ranas de chocolate quedan fuera a proposito - son salud, y
+// regalarsela al otro seria otra cosa muy distinta que compartir un coleccionable.
+//
+// Otra vez el mismo metodo que con los hechizos: no hace falta interceptar la
+// recogida del objeto. baseHarry ya lleva la cuenta (numBeans, numStars,
+// WizardCards[], y los puntos de casa via getNumHousePointsHarry), asi que
+// basta con mirar como sube y contarselo a los demas.
+//
+// Se mandan TOTALES ACUMULADOS, no incrementos. Si un paquete se pierde por el
+// camino, el siguiente lo arregla solo: el receptor aplica la diferencia entre
+// lo que le dicen y lo que ya habia aplicado de esa persona. Con incrementos,
+// un paquete perdido seria una gragea perdida para siempre.
+//
+// LA TRAMPA DEL BUCLE: al recibir una gragea la sumo a mi cuenta, y entonces mi
+// cuenta sube... y si no llevara aparte lo que me han regalado, la reenviaria
+// como si la hubiera cogido yo. Y el otro me la devolveria. Por eso hay dos
+// contadores: lo que habia al empezar (base) y lo que me han dado (recv). Lo
+// que anuncio es siempre  actual - base - recibido, o sea solo lo mio.
+// ---------------------------------------------------------------------------
+
+var config bool bShareInventory;   // se puede apagar con CoopShare
+var config bool bShareEverSet;     // para distinguir "apagado" de "nunca configurado"
+
+const INV_RATE = 0.5;
+var float InvAccum;
+var bool bInvBaseSet;
+
+// Lo que tenia cuando empezo a contarse (no se comparte hacia atras).
+var int InvBaseBeans, InvBaseStars, InvBasePoints, InvBaseCards;
+// Lo que me han regalado los demas. Se descuenta de lo que anuncio.
+var int InvRecvBeans, InvRecvStars, InvRecvPoints, InvRecvCards;
+// Lo que ya he aplicado de cada jugador, para no darlo dos veces.
+var int AppBeans[4], AppStars[4], AppPoints[4], AppCards[4];
+
 // Sincronizacion de hechizos. NO se engancha Harry.Cast() - eso obligaria a
 // inyectar codigo en el paquete del juego. baseWand ya apunta su ultimo disparo
 // en LastCastedSpell, asi que detectar un lanzamiento es una comparacion de
@@ -135,6 +174,14 @@ event PostBeginPlay()
         PlayerName = "Harry";
     if (LastPort == 0)
         LastPort = 7777;
+    // Se comparte por defecto: es lo que se pidio, y quitarselo a alguien sin
+    // avisar seria peor sorpresa que darselo.
+    if (!bShareEverSet)
+    {
+        bShareInventory = true;
+        bShareEverSet = true;
+        SaveConfig();
+    }
     MySlot = -1;
     log("[HP1Coop] manager up on " $ MapName());
     Enable('Tick');
@@ -341,6 +388,7 @@ function ResetSession()
 
     bConnected = false;
     LastAnnouncedMap = "";
+    bInvBaseSet = false;    // el inventario compartido vuelve a partir de cero
     for (i = 0; i < 4; i++)
         ClearSlot(i);
     ResetStats();
@@ -366,6 +414,10 @@ function ClearSlot(int slot)
     SlotName[slot] = "";
     SlotMap[slot] = "";
     SlotLastSpellSeq[slot] = 0;
+    AppBeans[slot] = 0;
+    AppStars[slot] = 0;
+    AppPoints[slot] = 0;
+    AppCards[slot] = 0;
     HidePuppet(slot);
 }
 
@@ -434,6 +486,16 @@ function SetZOffset(float z)
         }
     }
     LogMsg("altura de los munecos = " $ PuppetZOffset);
+}
+
+function ToggleShare()
+{
+    bShareInventory = !bShareInventory;
+    SaveConfig();
+    if (bShareInventory)
+        LogMsg("inventario compartido: SI (lo que recojas lo reciben los demas)");
+    else
+        LogMsg("inventario compartido: NO (dejas de repartir lo tuyo)");
 }
 
 function ToggleDebug()
@@ -606,7 +668,7 @@ function OnPacketFrom(string Text, int fromSlot)
         if (!bIsHost && s == 0 && Player != None && SlotMap[0] != MapName())
         {
             LogMsg("siguiendo al host a " $ SlotMap[0]);
-            Player.ClientTravel(SlotMap[0], TRAVEL_Absolute, false);
+            FollowTravel(SlotMap[0]);
         }
 
         Relay(Text, fromSlot);
@@ -635,6 +697,18 @@ function OnPacketFrom(string Text, int fromSlot)
 
         Relay(Text, fromSlot);
     }
+    // ----------------------------------------------------- INVENTARIO
+    else if (parts[2] == "INV")
+    {
+        if (n < 8)
+            return;
+        s = int(parts[3]);
+        if (s < 0 || s >= 4 || s == MySlot)
+            return;
+
+        ApplyInventory(s, int(parts[4]), int(parts[5]), int(parts[6]), int(parts[7]));
+        Relay(Text, fromSlot);
+    }
     // ----------------------------------------------------------------- BYE
     else if (parts[2] == "BYE")
     {
@@ -659,6 +733,46 @@ function OnPacketFrom(string Text, int fromSlot)
 
         Relay(Text, fromSlot);
     }
+}
+
+// ARREGLO BUG 7 (2026-08-28) - al cliente se le borraba el inventario cada vez
+// que seguia al host a otro nivel. Reportado: "tengo 0 puntos".
+//
+// El mod hacia:
+//     Player.ClientTravel(mapa, TRAVEL_Absolute, false);
+//
+// TRAVEL_Absolute con bItems=false significa literalmente "viaja sin llevarte
+// nada". Y lo que se pierde asi es justo lo que baseHarry marca como 'travel':
+//     var travel int numBeans;      var travel int numStars;
+//     var private travel int numHousePointsHarry;
+//     var travel WizardList WizardCards[25];
+// O sea grageas, estrellas, PUNTOS DE CASA y cromos. Todo, en cada transicion.
+//
+// Solo le pasaba al cliente porque el host cambia de nivel por su cuenta, con
+// el mecanismo del juego, y ese si conserva el estado.
+//
+// El juego nunca usa TRAVEL_Absolute. Su camino es TriggerChangeLevel ->
+// baseConsole.ChangeLevel(mapa, true) -> Level.ServerTravel -> y el motor acaba
+// haciendo ClientTravel(URL, TRAVEL_Relative, true). Asi que se usa esa misma
+// ruta en vez de inventar otra: ademas de conservar el inventario, la consola
+// se entera de que viene un nivel nuevo y no dibuja el mundo a medio cargar.
+function FollowTravel(string mapa)
+{
+    local baseConsole c;
+
+    if (Player == None || Player.Player == None)
+        return;
+
+    c = baseConsole(Player.Player.Console);
+    if (c != None)
+    {
+        c.ChangeLevel(mapa, true);      // true = llevarse las cosas
+        return;
+    }
+
+    // Sin consola no deberiamos llegar aqui - el mod vive dentro de una - pero
+    // si pasa, al menos que sea por el camino que conserva el estado.
+    Player.Level.ServerTravel(mapa, true);
 }
 
 // El host es el unico camino entre clientes: lo que le llega de uno tiene que
@@ -720,6 +834,138 @@ function CheckPeerBuild(int n, string peerBuild, string who)
         LogMsg("AVISO: versiones distintas - la tuya es la " $ BUILD
              $ " y la de " $ who $ " la " $ peerBuild
              $ ". Instalad todos el mismo HP1Coop.u.");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Inventario compartido
+// ---------------------------------------------------------------------------
+
+// Los 25 cromos caben en un entero, un bit cada uno. Asi el estado entero de la
+// coleccion viaja en un solo numero y se puede comparar de golpe.
+function int CardMask(baseHarry h)
+{
+    local int i, m;
+
+    for (i = 0; i < 25; i++)
+        if (h.WizardCards[i].bHasCard)
+            m = m | (1 << i);
+    return m;
+}
+
+function baseHarry LocalHarry()
+{
+    if (Player == None)
+        return None;
+    return baseHarry(Player);
+}
+
+// Fija el punto de partida: a partir de aqui se comparte lo que se recoja, no
+// lo que ya se traia puesto.
+function SetInventoryBaseline()
+{
+    local baseHarry h;
+
+    h = LocalHarry();
+    if (h == None)
+        return;
+
+    InvBaseBeans  = h.numBeans;
+    InvBaseStars  = h.numStars;
+    InvBasePoints = h.getNumHousePointsHarry();
+    InvBaseCards  = CardMask(h);
+
+    InvRecvBeans = 0;
+    InvRecvStars = 0;
+    InvRecvPoints = 0;
+    InvRecvCards = 0;
+
+    bInvBaseSet = true;
+    if (bShowDebug)
+        LogMsg("inventario: punto de partida " $ InvBaseBeans $ " grageas, "
+             $ InvBaseStars $ " estrellas, " $ InvBasePoints $ " puntos");
+}
+
+function SendInventory()
+{
+    local baseHarry h;
+    local int gb, gs, gp, gc;
+
+    h = LocalHarry();
+    if (h == None)
+        return;
+
+    if (!bInvBaseSet)
+    {
+        SetInventoryBaseline();
+        return;
+    }
+
+    // Solo lo mio: lo que tengo menos lo que ya traia menos lo que me han dado.
+    gb = h.numBeans - InvBaseBeans - InvRecvBeans;
+    gs = h.numStars - InvBaseStars - InvRecvStars;
+    gp = h.getNumHousePointsHarry() - InvBasePoints - InvRecvPoints;
+    gc = CardMask(h) & ~InvBaseCards & ~InvRecvCards;
+
+    // Si el juego resta algo por su cuenta no se manda en negativo: compartir
+    // significa dar, nunca quitar.
+    if (gb < 0) gb = 0;
+    if (gs < 0) gs = 0;
+    if (gp < 0) gp = 0;
+
+    Link.SendTo(PROTO $ "|INV|" $ MySlot $ "|" $ gb $ "|" $ gs $ "|" $ gp $ "|" $ gc);
+}
+
+function ApplyInventory(int s, int tb, int ts, int tp, int tc)
+{
+    local baseHarry h;
+    local int d, newc, i;
+
+    if (!bShareInventory || s < 0 || s >= 4)
+        return;
+
+    h = LocalHarry();
+    if (h == None)
+        return;
+
+    d = tb - AppBeans[s];
+    if (d > 0)
+    {
+        AppBeans[s] = tb;
+        InvRecvBeans += d;
+        h.AddBeans(d);              // AddBeans ademas hace parpadear el HUD
+        if (bShowDebug)
+            LogMsg(SlotName[s] $ " te da " $ d $ " gragea(s)");
+    }
+
+    d = ts - AppStars[s];
+    if (d > 0)
+    {
+        AppStars[s] = ts;
+        InvRecvStars += d;
+        h.AddStars(d);
+    }
+
+    d = tp - AppPoints[s];
+    if (d > 0)
+    {
+        AppPoints[s] = tp;
+        InvRecvPoints += d;
+        h.AddHousePoints(d);
+    }
+
+    newc = tc & ~AppCards[s];
+    if (newc != 0)
+    {
+        AppCards[s] = AppCards[s] | tc;
+        InvRecvCards = InvRecvCards | newc;
+        for (i = 0; i < 25; i++)
+        {
+            if ((newc & (1 << i)) != 0)
+                h.WizardCards[i].bHasCard = true;
+        }
+        if (bShowDebug)
+            LogMsg(SlotName[s] $ " te da un cromo");
     }
 }
 
@@ -992,6 +1238,18 @@ event Tick(float dt)
 
     if (bConnected)
         CheckLocalSpell();
+
+    // El inventario no necesita ir a 20 Hz: recoger una gragea no es urgente y
+    // los totales acumulados aguantan de sobra medio segundo de retraso.
+    if (bConnected && bShareInventory)
+    {
+        InvAccum += SEND_RATE;
+        if (InvAccum >= INV_RATE)
+        {
+            InvAccum = 0.0;
+            SendInventory();
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

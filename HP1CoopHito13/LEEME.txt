@@ -1,0 +1,38 @@
+HP1 CO-OP - Hito 13
+HP1Coop.u = 98260 bytes.  TODOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+ARREGLO IMPORTANTE: YA NO SE PIERDE EL PROGRESO
+-----------------------------------------------
+Si te conectabas a otro y el mod te llevaba a su nivel, al llegar te habias
+quedado sin grageas, sin cromos y sin puntos de casa. Cada transicion te
+vaciaba la coleccion. Solo le pasaba al que se conecta, no al anfitrion.
+
+El mod viajaba con "TRAVEL_Absolute" y sin llevar objetos, que literalmente
+significa "viaja sin llevarte nada". Y lo que se pierde asi es justo lo que el
+juego marca para conservar entre niveles: numBeans, numStars, los puntos de
+casa y los 25 cromos.
+
+Ahora se usa el mismo camino que usan las puertas del juego
+(ChangeLevel -> ServerTravel), que si conserva el estado.
+
+AVISO: lo que ya se perdio no vuelve. El arreglo evita que siga pasando.
+
+NUEVO: INVENTARIO COMPARTIDO
+----------------------------
+Si uno recoge una gragea, la teneis los dos. No se le quita a nadie: se
+duplica. Se comparten grageas, estrellas, puntos de casa y cromos de mago.
+
+LAS RANAS DE CHOCOLATE NO se comparten - son salud, no coleccion.
+
+Solo se reparte lo que recojais A PARTIR de conectaros, no lo que ya traiais.
+Si no, al conectar os inundariais con la coleccion entera del otro.
+
+Se puede apagar:   CoopShare
+Apagarlo significa que TU dejas de repartir lo tuyo, pero sigues recibiendo
+lo que reparten los demas.
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopShare                        CoopZ <n>
+  CoopDebug                        CoopDisconnect
