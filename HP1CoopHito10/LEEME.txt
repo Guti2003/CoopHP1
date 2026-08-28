@@ -1,0 +1,38 @@
+HP1 CO-OP - Hito 10
+HP1Coop.u = 70838 bytes.  LOS DOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+YA NO OS DESCONECTA AL CAMBIAR DE NIVEL
+---------------------------------------
+Solo le pasaba al que hospedaba, y ese detalle fue lo que lo delato.
+
+La consola del mod sobrevive al cambio de nivel; el manager no. Pero mientras
+la consola siguiera apuntando al manager viejo, ese manager no se podia
+reciclar, y con el sobrevivia su socket... que seguia reteniendo el puerto
+7777. El nivel nuevo pedia ese mismo puerto y se lo encontraba ocupado por el
+fantasma del nivel anterior.
+
+Al que se conecta no le afectaba porque pide un puerto cualquiera de los
+libres. Por eso fallaba un lado y no el otro.
+
+Ahora el socket se suelta explicitamente al cambiar de nivel, en vez de
+esperar a que pase el recolector de basura.
+
+Es el mismo fondo que el fallo de re-hospedar que se arreglo antes: en UE1 un
+socket no se cierra cuando uno quiere, sino cuando el motor recoge basura.
+
+De paso: si el puerto estuviera ocupado por otra cosa, ahora avisa una sola
+vez y sigue reintentando en segundo plano, en vez de llenar la pantalla.
+
+VIENE DE ANTES
+  - el companero anima al saltar y escalar
+  - CoopHost funciona despues de CoopDisconnect
+  - no os perdeis al cambiar de nivel ni al morir
+  - Wingardium Leviosa no desincroniza las partidas
+  - CoopConnect acepta puerto:  CoopConnect 25.26.239.149:7778
+  - aviso si no teneis la misma version, y reconexion automatica
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopZ <n>                        CoopDebug
+  CoopDisconnect

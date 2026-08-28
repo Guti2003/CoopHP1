@@ -42,7 +42,7 @@ const PROTO = "HPCOOP|1";
 // jugadores no tienen el mismo mod instalado. El protocolo (PROTO) no cambia:
 // dos builds distintas siguen hablando entre si, solo que se avisa. Subir esto
 // en cada version que se reparta.
-const BUILD = "9";
+const BUILD = "10";
 const SEND_RATE = 0.05;      // 20 Hz
 const HELLO_RATE = 1.0;
 const PING_RATE = 2.0;
@@ -66,6 +66,7 @@ var CoopPuppet Puppet;
 
 var bool bConnected;
 var bool bIsHost;
+var bool bBindFailWarned;   // el aviso de puerto ocupado se da una vez
 var bool bWarnedBuild;      // el aviso de version distinta se da una vez por sesion
 var float LastRecvTime;
 var float SendAccum;
@@ -236,10 +237,19 @@ function Host(optional int port)
         LastPort = port;
         bAutoHost = true;
         bAutoConnect = false;
+        bBindFailWarned = false;
         SaveConfig();
     }
     else
     {
+        // Este camino se reintenta cada medio segundo desde Tick, asi que el
+        // aviso se da una sola vez: si no, un puerto ocupado llenaria el log y
+        // la pantalla de mensajes.
+        if (!bBindFailWarned)
+        {
+            bBindFailWarned = true;
+            LogMsg("el puerto " $ port $ " esta ocupado; reintentando en segundo plano...");
+        }
         Link.Destroy();
         Link = None;
     }

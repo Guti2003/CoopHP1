@@ -114,6 +114,24 @@ function CoopManager GetCoop()
     if (Coop != None && !Coop.bDeleteMe && Coop.Level == Viewport.Actor.Level)
         return Coop;
 
+    // BUG 6 (2026-08-27) - al cambiar de nivel se perdia la conexion, y solo
+    // le pasaba al que hospedaba.
+    //
+    // Esta consola sobrevive al cambio de nivel; el manager no. Pero mientras
+    // esta variable siga apuntando al manager viejo, ese manager NO es basura
+    // recogible, y con el sobrevive su CoopLink... que sigue reteniendo el
+    // puerto 7777. El manager del nivel nuevo pedia ese mismo puerto y se lo
+    // encontraba ocupado por el fantasma del nivel anterior.
+    //
+    // Al cliente no le afectaba porque pide un puerto efimero cualquiera, que
+    // siempre hay libre. De ahi que fallara solo un lado.
+    //
+    // Es el mismo fondo que el BUG 2: en UE1 el socket no se suelta cuando uno
+    // quiere, sino cuando pasa el recolector. La solucion es la misma: soltarlo
+    // explicitamente, aqui antes de olvidarse del manager viejo.
+    if (Coop != None)
+        Coop.DisconnectLink();
+
     Coop = None;
 
     foreach Viewport.Actor.AllActors(class'CoopManager', m)
