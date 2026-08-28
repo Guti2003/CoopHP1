@@ -12,8 +12,7 @@ lo que recogen se comparte.
 IMPORTANTE: esto NO incluye el juego. Necesitas tu propia copia instalada.
 
 TODOS TIENEN QUE INSTALAR ESTE MISMO ARCHIVO: 105.402 bytes exactos.
-Si las versiones no coinciden,
-el mod avisa al conectar.
+Si las versiones no coinciden, el mod avisa al conectar.
 
 
 QUE HACE FALTA
