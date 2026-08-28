@@ -50,7 +50,7 @@ const PROTO = "HPCOOP|2";
 // Etiqueta de build. Viaja en HELLO/WELCOME para poder avisar cuando los dos
 // jugadores no tienen el mismo mod instalado. Subir esto en cada version que se
 // reparta.
-const BUILD = "11";
+const BUILD = "12";
 
 // Jugadores simultaneos, host incluido. Subirlo es cambiar esta constante y los
 // tamanos de los arrays (UE1 no acepta constantes como tamano de array). Antes
@@ -81,6 +81,8 @@ var bool bConnected;
 var bool bIsHost;
 var bool bBindFailWarned;   // el aviso de puerto ocupado se da una vez
 var bool bWarnedBuild;      // el aviso de version distinta se da una vez
+var bool bNoAnswerWarned;   // el aviso de "no contesta nadie" se da una vez
+var int  HelloTries;        // saludos enviados sin respuesta
 var float LastRecvTime;
 var float SendAccum;
 var float HelloAccum;
@@ -292,6 +294,8 @@ function ConnectTo(string ip, optional int port)
     Link.Init(Self);
     bIsHost = false;
     MySlot = -1;             // hasta que el host nos admita
+    HelloTries = 0;
+    bNoAnswerWarned = false;
     HelloAccum = 0.0;
     ResetStats();
 
@@ -894,9 +898,26 @@ event Tick(float dt)
         if (HelloAccum >= HELLO_RATE)
         {
             HelloAccum = 0.0;
+            HelloTries++;
             if (bShowDebug)
                 LogMsg("enviando HELLO a " $ LastHost $ "...");
             Link.SendTo(PROTO $ "|HELLO|" $ PlayerName $ "|" $ BUILD);
+
+            // El aviso de version incompatible que hay en OnPacketFrom solo
+            // salta cuando LLEGA un paquete raro. Pero un mod mas viejo tira
+            // los nuestros sin contestar, asi que en ese caso - justo cuando
+            // mas falta hace - no llegaba nada y no se avisaba de nada. Desde
+            // aqui se ve el sintoma que si es visible: llamamos y no contesta
+            // nadie.
+            if (HelloTries >= 10 && RecvCount == 0 && !bNoAnswerWarned)
+            {
+                bNoAnswerWarned = true;
+                LogMsg("llevo " $ HelloTries $ " intentos con " $ LastHost
+                     $ ":" $ LastPort $ " y no contesta nadie.");
+                LogMsg("comprueba: que el anfitrion haya escrito CoopHost YA EN"
+                     $ " PARTIDA, y que tenga esta misma version del mod"
+                     $ " (build " $ BUILD $ ").");
+            }
         }
     }
 

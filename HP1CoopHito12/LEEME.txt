@@ -1,0 +1,42 @@
+HP1 CO-OP - Hito 12  -  HASTA 4 JUGADORES
+HP1Coop.u = 85462 bytes.  TODOS TENEIS QUE INSTALAR ESTE MISMO ARCHIVO.
+
+NOVEDAD: AHORA DICE POR QUE NO CONECTA
+--------------------------------------
+Si llamas al anfitrion y no contesta nadie, a los 10 intentos sale un aviso
+en pantalla en vez de dejarte adivinando.
+
+El aviso de version incompatible que ya habia solo saltaba cuando LLEGABA un
+paquete raro. Pero un mod mas viejo tira los nuestros sin contestar, asi que
+justo en ese caso no llegaba nada y no se avisaba de nada.
+
+COMO COMPROBAR QUE VA
+---------------------
+El que se conecta escribe  CoopStatus  y mira "recibidos":
+
+    recibidos=0     no llega NADA del anfitrion. Mira la lista de abajo.
+    slot=-1         el anfitrion aun no te ha dado plaza.
+
+Lo de "enviados=0" mientras slot=-1 es normal: hasta que no te dan plaza no
+se manda estado, porque nadie sabria a quien atribuirlo.
+
+SI NO CONECTA, EN ESTE ORDEN
+----------------------------
+1. Que el anfitrion haya escrito CoopHost YA EN PARTIDA, no en el menu.
+   En el menu no funciona ningun comando del mod.
+2. Que el anfitrion vea "hospedando en el puerto UDP 7777".
+   Si dice que el puerto esta ocupado, que cierre y vuelva a abrir el juego.
+3. Que TODOS tengais este mismo archivo, 85462 bytes.
+4. Que la IP sea la del anfitrion y sea numerica.
+5. Por VPN (Radmin, ZeroTier, Tailscale) no hay que abrir puertos. Por
+   internet a pelo, el anfitrion tiene que abrir el UDP 7777.
+
+Cuando alguien entra, EL ANFITRION ve en pantalla:
+    <nombre> se ha unido a la partida (slot N)
+Si el anfitrion no ve esa linea, su juego no esta recibiendo el saludo.
+
+COMANDOS (consola con TAB, ya en partida)
+  CoopHost [puerto]                CoopConnect <ip>[:puerto]
+  CoopName <nombre>                CoopStatus
+  CoopZ <n>                        CoopDebug
+  CoopDisconnect
